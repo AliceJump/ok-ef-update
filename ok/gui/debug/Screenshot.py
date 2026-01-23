@@ -20,7 +20,7 @@ logger = Logger.get_logger(__name__)
 
 class Screenshot(QObject):
 
-    def __init__(self, exit_event):
+    def __init__(self, exit_event, debug):
         super().__init__()
         self.queue = []
         self.time_to_expire = 4
@@ -31,6 +31,7 @@ class Screenshot(QObject):
             "blue": QColor(60, 60, 255)
         }
         self.exit_event = exit_event
+        self.debug = debug
         communicate.draw_box.connect(self.draw_box)
         communicate.clear_box.connect(self.clear_box)
         communicate.screenshot.connect(self.screenshot)
@@ -61,7 +62,8 @@ class Screenshot(QObject):
             else:
                 remove_old_files(self.click_screenshot_folder, 7)
 
-            if get_folder_size(self.screenshot_folder) > limit:
+            if self.debug or get_folder_size(self.screenshot_folder) > limit:
+                logger.info(f'clear {self.screenshot_folder}')
                 clear_folder(self.screenshot_folder)
             else:
                 remove_old_files(self.screenshot_folder, 7)
