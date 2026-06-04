@@ -1,0 +1,235 @@
+<p align="center">
+  <img 
+    src="icons/icon.png"
+    alt="ok-ef game automation tool logo"
+    width="256"
+    height="256"
+  />
+</p>
+
+<h1 align="center">ok-ef</h1>
+
+<p>
+一个基于图像识别的终末地自动化程序，部分功能支持后台运行，基于 <a href="https://github.com/alicejump/ok-script">ok-script</a> 开发。
+<br />
+An image-recognition-based automation tool for End Field, with background mode support, developed with <a href="https://github.com/alicejump/ok-script">ok-script</a>.
+</p>
+
+<p><i>通过模拟 Windows 用户接口进行操作，无内存读取、无文件修改</i></p>
+
+
+<!-- Badges -->
+<div align="center">
+
+![平台](https://img.shields.io/badge/platform-Windows-blue)
+[![GitHub release](https://img.shields.io/github/v/release/alicejump/ok-end-field)](https://github.com/alicejump/ok-end-field/releases)
+[![总下载量](https://img.shields.io/github/downloads/alicejump/ok-end-field/total)](https://github.com/alicejump/ok-end-field/releases)
+[![Discord](https://img.shields.io/discord/296598043787132928?color=5865f2&label=%20Discord)](https://discord.gg/vVyCatEBgA)
+
+</div>
+
+## Downloads
+
+![downloads](./assets/downloads.svg)
+
+### [English Readme](README_en.md) | 中文说明
+
+---
+
+**演示与教程:**
+
+[![Bilibili](https://img.shields.io/badge/Bilibili-%2300A1D6.svg?style=for-the-badge&logo=bilibili&logoColor=white)](https://www.bilibili.com/video/BV16PPszhEwN/)
+
+---
+
+## ⚠️ 免责声明
+
+本软件为外部辅助工具，旨在自动化《终末地》的部分游戏流程。它完全通过模拟常规用户界面与游戏交互，遵循相关法律法规。本项目旨在简化用户的重复性操作，不会破坏游戏平衡或提供不公平优势，也绝不会修改任何游戏文件或数据。
+
+本软件开源、免费，仅供个人学习与交流使用，请勿用于任何商业或营利性目的。开发者团队拥有本项目的最终解释权。因使用本软件而产生的任何问题，均与本项目及开发者无关。
+
+请注意，根据鹰角官方的《终末地》公平运营声明：
+> 严禁利用任何第三方工具破坏游戏体验。
+> 我们将严厉打击使用外挂、加速器、作弊软件、宏脚本等违规工具的行为，这些行为包括但不限于自动挂机、技能加速、无敌模式、瞬移、修改游戏数据等操作。
+> 一经查证，我们将视违规情况和次数，采取包括但不限于扣除违规收益、冻结或永久封禁游戏账号等措施。
+
+**使用本软件即表示您已阅读、理解并同意以上声明，并自愿承担一切潜在风险。**
+
+## 🚀 快速开始
+
+1. **下载安装包**：从下方的“下载渠道”中选择一个，下载最新的 `ok-ef-win32-China-setup.exe` 安装文件。
+2. **安装程序**：双击 `ok-ef-win32-China-setup.exe` 文件，并按照安装向导的提示完成安装。
+3. **运行程序**：安装完成后，从桌面快捷方式或开始菜单启动 `ok-ef` 即可。
+
+## 📥 下载渠道
+
+* **[GitHub](https://github.com/alicejump/ok-end-field/releases)**: 官方发布页，全球访问速度快。（**请下载 `setup.exe`
+  安装包，而不是 `Source Code` 源码压缩包**）
+* **[Mirror酱](https://mirrorchyan.com/zh/projects?rid=ok-end-field&source=ok-ef-readme)**: 国内镜像，下载可能需要购买其平台的
+  CD-KEY。
+*  **[百度网盘](https://pan.baidu.com/s/1rxLRLkSx34xIL-nGib04sg?pwd=479z)**: 免费下载
+*  **[夸克网盘](https://pan.quark.cn/s/418018ddf7a0)**: 免费下载
+
+
+## 运行要求与推荐设置
+
+- 系统：Windows
+- 游戏分辨率：推荐 16:9（1920×1080 最佳），最低 1600×900（低于该分辨率可能导致识别与定位异常）
+- 语言：当前部分功能仅支持简体中文
+- 运行权限：建议管理员权限运行（源码模式必须）
+- 路径：安装/运行路径尽量使用纯英文
+- 帧率：推荐稳定 60 FPS，用于战斗和导航任务
+
+---
+
+
+## 功能一览（按任务类型）
+
+### 一次性任务（手动点击执行）
+- [日常任务](docs/日常任务.md)：送礼、据点兑换、委托处理、买卖货、刷体力、奖励领取等一条龙
+- [刷体力](docs/体力本.md)：普通/高阶/危境/能量淤积点，支持排轴和刷本序列
+- [运送委托接取](docs/运送委托接取.md)：按券种与金额筛选并自动抢单
+- [自动送货](docs/自动送货.md)：武陵委托自动接取与送货路径执行（7.31w/7.98w）
+- [仓库物品转移](docs/仓库物品转移.md)：跨仓库批量转移指定物品
+- [毕业基质识别](docs/毕业基质识别.md)：识别毕业基质并自动上锁/处理
+- 定时截图：按间隔自动截图，便于数据采集/样本收集
+
+### 触发式任务（后台循环检测）
+- [自动战斗](docs/自动战斗.md)：检测战斗状态并按技能序列自动释放
+- 自动拾取：白名单拾取 + 黑名单过滤
+- 自动登录：自动处理掉线/登出流程
+- 自动跳过剧情：识别并执行跳过/确认流程
+
+### 定时任务
+- 支持将一次性任务加入 Windows 任务计划，按设定时间自动启动执行
+
+### 辅助能力
+- OCR 识别、模板匹配、HSV 颜色识别
+- UI 自动化、按键模拟
+- 日志、异常处理、流程调度
+
+## 🔧 疑难解答 (Troubleshooting)
+
+如果遇到问题，请在提问前按以下步骤逐一排查：
+
+1. **安装路径**：请确保软件安装在**纯英文路径**下（例如 `D:\Games\ok-ef`），不要安装在 `C:\Program Files` 或包含中文字符的文件夹中。
+2. **杀毒软件**：将软件的安装目录添加到您的杀毒软件（包括 Windows Defender）的**信任区或白名单**中，以防文件被误删或拦截。
+3. **显示设置**：
+    * 关闭所有显卡滤镜（如 NVIDIA Game Filter）和锐化功能，除非部分功能要求。
+    * 使用游戏默认的亮度设置。
+    * 关闭任何在游戏画面上显示信息的叠加层（如 MSI Afterburner、Fraps 等显示的帧率）。
+4. **自定义按键**：如果您修改了游戏内的默认按键，请务必在 `ok-ef` 的设置中进行同步配置。仅支持设置中列出的按键。
+5. **软件版本**：检查并确保您使用的是最新版本的 `ok-ef`。
+6. **游戏性能**：请确保游戏能稳定在 **60 FPS** 运行。如果帧率不稳定，请尝试降低游戏画质或分辨率。
+7. **游戏断线**：如频繁遇到与服务器断开连接的问题，可以尝试先手动打开游戏运行5分钟后再启动本工具，或在断线后直接重新登录，不要退出游戏。
+8. **寻求帮助**：如果以上步骤都无法解决您的问题，请通过社区渠道提交详细的错误报告。
+9. **游戏/软件语言** 本软件目前部分功能仅支持简体中文，不支持其他语言。
+
+---
+
+## 🛠 维护区
+
+### 维护文档
+
+| 文档 | 说明 |
+|------|------|
+| [自动送货维护工作流](docs/update/送货地区维护工作流.md) | 新增或调整送货地区时使用；说明如何维护地区数据、模板资源与验证步骤 |
+| [日常送礼维护工作流](docs/update/日常送礼维护工作流.md) | 新增角色联络或礼物赠送功能时使用；说明如何添加角色数据与接触模板 |
+| [主数据维护工作流](docs/update/主数据维护工作流.md) | 新增或调整游戏区域、关卡、商品数据时使用；说明所有世界数据结构的维护方法 |
+
+---
+
+## 💻 开发者专区
+
+### 开发者文档
+
+| 文档 | 说明 |
+|------|------|
+| [快速开始（QUICKSTART.md）](docs/dev/QUICKSTART.md) | 从源码运行项目、启动软件、新建触发式/一次性任务的最简流程 |
+| [开发指南（DEVELOPMENT.md）](docs/dev/DEVELOPMENT.md) | 架构总览、目录结构、开发流程、测试、CI/CD、路线图 |
+| [API 参考（API.md）](docs/dev/API.md) | BaseEfTask、Mixin、ScreenPosition、KeyConfigManager 等详细 API |
+| [键盘操作体系（键盘操作体系.md）](docs/dev/键盘操作体系.md) | 热键映射、按键封装规范、send_key 例外清单 |
+
+### 从源码运行 (Python)
+
+本项目仅支持 Python 3.12 版本, 必须以管理员权限启动CMD, PyCharm, VSCode。
+
+```bash
+# 若首次 clone 未带子模块参数，请先执行
+git submodule update --init --recursive
+
+# 安装或更新依赖
+pip install -r requirements.txt --upgrade
+
+# 运行 Release 版本
+python main.py
+
+# 运行 Debug 版本
+python main_debug.py
+```
+
+### 命令行参数
+
+您可以通过命令行参数实现自动化启动。
+
+``` pwsh
+# 启动后自动执行第1个任务『日常任务』，并在任务完成后退出程序
+ok-ef.exe -t 1 -e
+```
+
+* `-t` 或 `--task`: 启动后自动执行第N个任务。`1` 代表任务列表（文件 [./src/config.py](./src/config.py) 列表 `onetime_tasks`）中的第1个（也就是『日常任务』）。
+* `-e` 或 `--exit`: 任务执行完毕后自动退出程序。
+
+### 开发调试与测试
+
+```bash
+# 执行 tests/ 下全部测试脚本（PowerShell）
+./run_tests.ps1
+
+# 或逐个运行 unittest
+python -m unittest tests/TestEssenceRecognizer.py
+```
+
+若你在开发“识别类任务”（OCR/模板/颜色识别），建议优先在 `main_debug.py` 下调试，配合日志与截图目录排查。
+
+## 💬 加入我们
+
+* **QQ 交流群**: `940581952` (入群答案: `终末地`)
+* **QQ 频道**: [点击加入](https://pd.qq.com/s/djmm6l44y) (群满或获取最新资讯)
+* **开发者群**: `1079581542` ( **注意**:
+  此群仅面向有开发能力、拥有Github账号、希望参与贡献的开发者，入群前请确保您已能够从源码成功运行项目。)
+
+本项目基于 [ok-script](https://github.com/ok-oldking/ok-script)
+框架开发，简单易维护。欢迎有兴趣的开发者使用 [ok-script](https://github.com/ok-oldking/ok-script) 开发您自己的自动化项目。
+
+## 🔗 使用ok-script的项目：
+
+* 终末地 [https://github.com/AliceJump/ok-end-field](https://github.com/AliceJump/ok-end-field)
+* 鸣潮 [https://github.com/ok-oldking/ok-wuthering-waves](https://github.com/ok-oldking/ok-wuthering-waves)
+* 鸣潮(日常一条龙-优化版) [https://github.com/zzc-tongji/ok-ww-enhanced](https://github.com/zzc-tongji/ok-ww-enhanced)
+* 原神(停止维护,
+  但是后台过剧情可用) [https://github.com/ok-oldking/ok-genshin-impact](https://github.com/ok-oldking/ok-genshin-impact)
+* 少前2 [https://github.com/ok-oldking/ok-gf2](https://github.com/ok-oldking/ok-gf2)
+* 星铁 [https://github.com/Shasnow/ok-starrailassistant](https://github.com/Shasnow/ok-starrailassistant)
+* 星痕共鸣 [https://github.com/Sanheiii/ok-star-resonance](https://github.com/Sanheiii/ok-star-resonance)
+* 二重螺旋 [https://github.com/BnanZ0/ok-duet-night-abyss](https://github.com/BnanZ0/ok-duet-night-abyss)
+* 白荆回廊(停止更新) [https://github.com/ok-oldking/ok-baijing](https://github.com/ok-oldking/ok-baijing)
+
+## ❤️ 赞助与致谢
+
+### 贡献者
+
+<a href="https://github.com/AliceJump/ok-end-field/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=AliceJump/ok-end-field" />
+</a>
+
+### 赞助商 (Sponsors)
+
+* **EXE 签名**: Free code signing provided by [SignPath.io](https://signpath.io/), certificate
+  by [SignPath Foundation](https://signpath.org/).
+
+### 致谢
+
+* [ok-oldking/OnnxOCR](https://github.com/ok-oldking/OnnxOCR)
+* [zhiyiYo/PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)
+* [Toufool/AutoSplit](https://github.com/Toufool/AutoSplit)

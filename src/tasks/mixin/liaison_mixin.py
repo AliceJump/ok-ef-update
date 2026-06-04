@@ -1,0 +1,562 @@
+"""
+LiaisonMixin
+
+负责干员联络自动化流程，包括：
+
+主要功能：
+1. 传送到帝江号
+2. 导航至中央环厅
+3. 导航至干员联络站
+4. 执行干员联络
+5. 收取礼物
+6. 赠送礼物
+
+依赖模块：
+- NavigationMixin: 提供路径导航能力
+- OCR识别
+- Feature识别
+"""
+
+import random
+import re
+import time
+
+from src.data.FeatureList import FeatureList as fL
+from src.data.characters import characters
+from src.data.characters_utils import get_contact_list_with_feature_list, get_localized_name_by_canonical
+from src.tasks.mixin.common import LiaisonResult, build_name_patterns
+from src.tasks.mixin.navigation_mixin import NavigationMixin
+
+
+class LiaisonMixin(NavigationMixin):
+    """
+    干员联络任务 Mixin。
+
+    提供完整的干员联络自动化流程，包括：
+    - 帝江号传送
+    - 联络站导航
+    - 干员联络
+    - 礼物交互
+
+    属性:
+        can_contact_dict (dict):
+            可联络干员字典
+            {角色名: feature_name}
+
+        contact_name_patterns (dict):
+            OCR匹配角色名字的正则表达式
+    """
+
+    def __init__(self, *args, **kwargs):
+        """初始化联络系统"""
+        super().__init__(*args, **kwargs)
+
+        # 获取所有可联络干员
+        self.can_contact_dict = get_contact_list_with_feature_list(self.lang)
+
+        # 为每个干员构建 OCR 名称匹配规则
+        self.contact_name_patterns = {
+            name: build_name_patterns(name)
+            for name in self.can_contact_dict.keys()
+        }
+
+    def transfer_to_home_point(self, box=None, should_check_out_boat=False):
+        """
+        通过地图传送到帝江号指定点。
+
+        流程:
+        1. 打开地图
+        2. 找到帝江号
+        3. 进入帝江号区域
+        4. 点击传送点
+        5. 点击传送按钮
+
+        Returns:
+            bool: 是否成功传送
+        """
+        if box is None:
+            box = self.box.left
+        self.ensure_main()
+
+        self.log_info("开始传送到帝江号")
+
+        # 打开地图
+        self.ensure_map()
+        self.log_info("打开地图界面 (按下 M)")
+
+        # 查找帝江号区域
+        target_area = self.wait_click_feature(
+            feature=fL.boat_entrance_icon,
+            time_out=2,
+            raise_if_not_found=False,
+            after_sleep=2
+        )
+        if should_check_out_boat:
+            if not target_area:
+                self.log_info("已在帝江号区域内，无需传送")
+                self.ensure_main()
+                return True
+        self.log_info("找到帝江号区域，点击进入")
+
+        # 查找传送点
+        tp_icon = self.find_feature(
+            feature_name="transfer_point",
+            box=box,
+            threshold=0.7
+        )
+
+        if not tp_icon:
+            self.log_info("未找到传送点图标，传送失败")
+            return False
+
+        self.log_info("找到传送点图标，点击传送点")
+        self.click(tp_icon)
+
+        # 查找传送按钮
+        transfer_btn = self.wait_feature(
+            feature=fL.transfer_go,
+            time_out=10,
+            raise_if_not_found=False
+        )
+
+        if not transfer_btn:
+            self.log_info("未找到传送按钮，传送失败")
+            return False
+
+        self.log_info("找到传送按钮，点击进行传送")
+        self.click(transfer_btn)
+
+        # 等待传送完成
+        self.log_info("等待传送完成，检查舰桥界面")
+        self.ensure_main()
+        self.log_info("传送完成，已到达帝江号舰桥")
+        return True
+
+    def navigate_to_main_hall(self) -> bool:
+        """
+        前往中央环厅。
+
+        通过短距离前进移动触发区域更新，
+        OCR检测当前位置是否为中央环厅。
+
+        Returns:
+            bool: 是否成功到达
+        """
+        self.log_info("开始前往中央环厅")
+
+        max_attempts = 2
+
+        for attempt in range(1, max_attempts + 1):
+            self.log_info(f"第 {attempt}/{max_attempts} 次尝试移动前进")
+
+            self.move_keys("w", duration=1)
+
+            if self.wait_ocr(
+                    match=self.lang.liaison_mixin.k_80b758b9,
+                    box=self.box.left,
+                    log=True
+            ):
+                self.log_info("已到达中央环厅")
+                return True
+
+        self.log_info("前往中央环厅可能失败，尝试后续操作")
+        return True
+
+    def navigate_to_operator_liaison_station(self):
+        """
+        自动导航到干员联络站。
+
+        Returns:
+            LiaisonResult | bool
+        """
+        self.log_info("开始前往干员联络站")
+        self.ensure_main()
+        self.ensure_map()
+        self.log_info("打开地图界面")
+
+        if not self.start_tracking_and_align_target(
+                fL.operator_liaison_station,
+                fL.operator_liaison_station_out_map
+        ):
+            return False
+
+        def special_chat_detect():
+            """
+            在导航过程中检测是否出现干员交互图标
+            """
+
+            chat_box = self.find_feature("chat_icon_dark") or self.find_feature("chat_icon_2")
+
+            if chat_box:
+                self.log_info("发现干员，点击交互图标")
+
+                self.send_key_down("alt")  # 确认使用send_key：alt为系统修饰键，用于alt+点击交互，非游戏可配置热键
+                self.sleep(0.5)
+
+                self.click(chat_box, after_sleep=0)
+
+                self.send_key_up("alt")  # 确认使用send_key：释放alt修饰键
+
+                return LiaisonResult.FIND_CHAT_ICON
+
+            return None
+
+        return self.navigate_until_target(
+            target_ocr_pattern=self.lang.liaison_mixin.k_4f35d7ac,
+            nav_feature_name="operator_liaison_station_out_map",
+            time_out=60,
+            found_special_callback=special_chat_detect,
+        )
+
+    def _resolve_contact_feature_name(self, target_name: str | None) -> str | None:
+        if not target_name:
+            return None
+
+        if target_name in self.can_contact_dict:
+            return self.can_contact_dict[target_name]
+
+        if target_name in self.can_contact_dict.values():
+            return target_name
+
+        for info in characters.values():
+            if target_name == info.get("zh"):
+                feature_name = f"{info.get('en')}_contact"
+                if feature_name in self.can_contact_dict.values():
+                    return feature_name
+
+        return None
+
+    def perform_operator_liaison(self):
+        """
+        执行一次干员联络流程。
+
+        Returns:
+            bool: 是否成功完成联络
+        """
+        self.log_info("开始执行干员联络任务")
+
+        target_name = self.config.get("优先送礼对象")
+        # 如果配置里存的是 canonical（原始中文名），在读取时通过 characters_utils 统一转换为本地化显示名
+        # 以便后续使用 self.can_contact_dict（可能是本地化键）进行匹配。
+        if target_name:
+            try:
+                localized = get_localized_name_by_canonical(self.lang, target_name)
+                if localized:
+                    target_name = localized
+            except Exception:
+                # 容错：如果本地化转换失败，保留原值继续处理
+                pass
+        target_feature_name = self._resolve_contact_feature_name(target_name)
+        if not target_feature_name:
+            self.log_info(f"未识别联络对象 {target_name}，改用默认联络对象")
+            target_name = next(iter(self.can_contact_dict.keys()), None)
+            if not target_name:
+                self.log_info("未找到任何可联络对象")
+                return False
+            target_feature_name = self.can_contact_dict[target_name]
+
+        search_char_box = self.box_of_screen(
+            795 / 1920,
+            248 / 1080,
+            1687 / 1920,
+            764 / 1080
+        )
+
+        find_name_patterns = []
+
+        for attempt in range(1, 11):
+
+            self.log_info(f"第 {attempt}/10 次尝试打开信任度界面")
+
+            self.press_key('f')
+            self.wait_ui_stable(refresh_interval=1)
+            result = {}
+            found_target = False
+
+            for _ in range(3):
+
+                self.next_frame()
+
+                found = self.find_one(
+                    feature_name=target_feature_name,
+                    box=search_char_box,
+                    threshold=0.7
+                )
+
+                if found:
+                    result[target_feature_name] = found
+                    found_target = True
+                    break
+
+                self.scroll_relative(0.5, 0.5, -3)
+                self.wait_ui_stable(refresh_interval=0.5)
+
+            if not found_target:
+
+                self.ensure_main()
+                self.press_key('f')
+                self.wait_ui_stable(refresh_interval=1)
+                self.log_info(f"未找到联络对象 {target_name}，尝试其他目标")
+
+                other_results = {}
+
+                for _, other_feature in self.can_contact_dict.items():
+
+                    if other_feature == target_feature_name:
+                        continue
+
+                    self.next_frame()
+
+                    found = self.find_one(
+                        feature_name=other_feature,
+                        box=search_char_box,
+                        threshold=0.7
+                    )
+
+                    if found:
+                        other_results[other_feature] = found
+
+                if other_results:
+                    feature = random.choice(list(other_results.keys()))
+                    result[feature] = other_results[feature]
+
+            if not result:
+                self.log_info("未找到任何可联络对象")
+                return False
+
+            find_feature_name = next(iter(result))
+
+            find_name = next(
+                k for k, v in self.can_contact_dict.items()
+                if v == find_feature_name
+            )
+
+            find_name_patterns = self.contact_name_patterns.get(
+                find_name,
+                build_name_patterns(find_name)
+            )
+
+            self.log_info("找到联络对象")
+
+            self.click(list(result.values())[0], after_sleep=0.5)
+
+            if not self.wait_click_feature(
+                feature=fL.liaison_confirm,
+                time_out=5,
+                after_sleep=2,
+                raise_if_not_found=False,
+            ):
+                self.log_info("未找到确认联络按钮，任务失败")
+                return False
+
+            self.log_info("点击确认联络按钮")
+
+            wait_disappear_count = 0
+
+            while self.ocr(match=self.lang.liaison_mixin.k_47eaf0c5, box=self.box.top_left):
+
+                wait_disappear_count += 1
+
+                if wait_disappear_count >= 200:
+                    self.log_info("等待 '干员联络' 文案消失次数超限，任务失败")
+                    return False
+
+                self.next_frame()
+                self.sleep(0.2)
+
+            self.next_frame()
+
+            if not self.wait_ocr(
+                    match=find_name_patterns,
+                    box=self.box.top,
+                    time_out=2,
+                    log=True
+            ):
+                self.log_info(f"未找到 {find_name} 的名字,重新打开联络界面")
+                self.ensure_main()
+                continue
+
+            self.next_frame()
+
+            if chat_box := self.ocr(
+                    match=find_name_patterns,
+                    box=self.box.bottom_right
+            ):
+                return self.click_chat_box(find_name_patterns, chat_box)
+
+            self.log_info(f"找到 {find_name} 的名字，开始界面对齐")
+
+            find_flag = self.align_ocr_or_find_target_to_center(
+                ocr_match_or_feature_name_list=find_name_patterns,
+                raise_if_fail=False,
+                only_x=True,
+                max_time=14,
+                max_step=150,
+                min_step=20,
+                slow_radius=100,
+                tolerance=100,
+                once_time=0.1
+            )
+
+            if find_flag:
+                self.log_info("界面对齐完成")
+                break
+
+        self.log_info("开始寻找干员进行交互")
+
+        start_time = time.time()
+        chat_box = None
+
+        while chat_box is None:
+
+            chat_box = self.wait_ocr(
+                match=find_name_patterns,
+                box=self.box.bottom_right,
+                time_out=1,
+            )
+
+            if chat_box:
+                return self.click_chat_box(find_name_patterns, chat_box)
+
+            self.move_keys("w", duration=0.5)
+
+            self.log_info("未找到干员，继续前进移动")
+
+            if time.time() - start_time > 5:
+                self.log_info("长时间未找到干员，任务超时")
+                return False
+
+        return False
+
+    def click_chat_box(self, find_name_patterns, chat_box):
+        """点击干员聊天交互框"""
+        self.log_info("发现干员，点击进行交互")
+
+        self.send_key_down("alt")  # 确认使用send_key：alt为系统修饰键，用于alt+点击干员聊天框，非游戏可配置热键
+        self.sleep(0.5)
+
+        self.click_box(chat_box, after_sleep=0.5)
+
+        self.next_frame()
+
+        self.wait_click_ocr(
+            match=find_name_patterns,
+            box=self.box.bottom_right,
+            time_out=1
+        )
+
+        self.send_key_up("alt")  # 确认使用send_key：释放alt修饰键
+
+        self.log_info("干员联络完成")
+
+        return True
+
+    def _gift_action_box(self):
+        return self.box_of_screen(1434 / 1920, 0.5, 1, 872 / 1080)
+
+    def _finish_collect_gift_after_clicked(self):
+        """在已点击『收下』后，完成收礼弹窗流程。"""
+        self.log_info("开始收下礼物")
+        self.skip_dialog()
+        self.press_key('f', after_sleep=0.5)
+        self.log_info("收下完成")
+        return True
+
+    def _finish_give_gift_after_clicked(self):
+        """在已点击『赠送』后，完成选礼与确认赠送流程。"""
+        self.wait_ocr(match=self.lang.liaison_mixin.k_c8d09cf9, box=self.box.bottom_left, time_out=5)
+        self.click(144 / 1920, 855 / 1080)
+        self.log_info("点击赠送礼物位置")
+        if self.wait_click_feature(
+            feature=fL.give_gift,
+            box=self.box_of_screen(0.942, 0.898, 0.963, 0.937),
+            time_out=5,
+            after_sleep=0.5,
+            raise_if_not_found=False
+        ):
+            self.log_info("确认赠送按钮已出现")
+            self.skip_dialog()
+            self.log_info("成功赠送礼物")
+            return True
+        self.log_info("赠送礼物失败")
+        return False
+
+    def collect_gifts(self, timeout=30):
+        """仅执行收礼流程。"""
+        self.log_info("开始仅收礼流程")
+        result = self._loop_wait_click_ocr(
+            match=[self.lang.liaison_mixin.k_ae0c20b5],
+            box=self._gift_action_box(),
+            timeout=timeout,
+            log_msg="等待 收下 超时",
+        )
+        if not result:
+            self.log_info("未检测到可收下礼物")
+            return False
+        return self._finish_collect_gift_after_clicked()
+
+    def give_gifts(self, timeout=30, gift_entry_clicked=False):
+        """仅执行送礼流程。"""
+        self.log_info("开始仅送礼流程")
+        if not gift_entry_clicked:
+            result = self._loop_wait_click_ocr(
+                match=[self.lang.liaison_mixin.k_662dc863],
+                box=self._gift_action_box(),
+                timeout=timeout,
+                log_msg="等待 赠送 超时",
+            )
+            if not result:
+                self.log_info("未检测到赠送入口")
+                return False
+        return self._finish_give_gift_after_clicked()
+
+    def collect_and_give_gifts(self):
+        """
+        自动执行收礼与送礼流程。
+
+        Returns:
+            bool: 是否成功完成
+        """
+        self.log_info("开始收取或赠送礼物")
+        self.start_time = time.time()
+        while self.find_one(feature_name=fL.esc, vertical_variance=0.01, horizontal_variance=0.02):
+            if time.time() - self.start_time > 5:
+                self.log_info("没能进入交流界面")
+                return False
+            self.sleep(0.5)
+        result = self._loop_wait_click_ocr(
+            match=[self.lang.liaison_mixin.k_ae0c20b5, self.lang.liaison_mixin.k_662dc863],
+            box=self._gift_action_box(),
+            timeout=30,
+            log_msg="等待 收下/赠送 超时",
+        )
+
+        if not result:
+            return False
+
+        self.log_info(f"找到按钮: {result[0].name}")
+
+        if result and len(result) > 0 and "收下" in result[0].name:
+            if not self._finish_collect_gift_after_clicked():
+                return False
+            self.log_info("收下完成，准备赠送礼物")
+            return self.give_gifts(timeout=30)
+
+        # 命中『赠送』时，入口已被点击，直接执行送礼后续。
+        return self.give_gifts(timeout=30, gift_entry_clicked=True)
+
+    def _loop_wait_click_ocr(self, match, box, timeout, log_msg=None):
+        start_time = time.time()
+
+        while True:
+            if time.time() - start_time > timeout:
+                if log_msg:
+                    self.log_info(log_msg)
+                return None
+
+            self.click(0.5, 0.5, after_sleep=0.5)
+
+            result = self.wait_click_ocr(match=match, box=box, time_out=1, after_sleep=0.5)
+
+            if result:
+                return result
