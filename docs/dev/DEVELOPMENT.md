@@ -51,7 +51,6 @@ main.py / main_debug.py
         │       ├── DeliveryTask      (自动送货)
         │       ├── TakeDeliveryTask  (运送委托接取)
         │       ├── WarehouseTransferTask (仓库物品转移)
-        │       ├── EssenceScanTask   (基质扫描/上锁)
         │       ├── PeriodicScreenshotTask (定时截图)
         │       └── Test / TestStartGame  (开发调试用)
         │
@@ -105,10 +104,10 @@ ok-end-field/
 │   │   ├── world_map_utils.py # 地图数据工具函数（按据点名获取地区等）
 │   │   └── zh_en.py           # 中英翻译字典（物品中文名 → 英文 feature 名、仓库分类映射）
 │   │
-│   ├── essence/               # 基质（装备词条）识别模块
+│   ├── essence/               # 装备词条 OCR 解析轮子（无任务入口）
 │   │   ├── __init__.py
-│   │   ├── essence_recognizer.py # 核心：OCR 解析基质面板（名称、词条、等级），纯算法无截图
-│   │   └── weapon_data.py    # 武器毕业词条数据与匹配函数
+│   │   ├── essence_recognizer.py # OCR 解析装备词条面板（名称、词条、等级），纯算法无截图
+│   │   └── weapon_data.py    # 武器词条数据 CSV 读取与匹配函数
 │   │
 │   ├── image/                 # 图像处理工具层
 │   │   ├── frame_processes.py # isolate_by_hsv_ranges：通用 HSV 颜色掩码提取
@@ -135,7 +134,6 @@ ok-end-field/
 │       ├── BattleTask.py      # 一次性任务：单独刷体力（复用 DailyBattleMixin）
 │       ├── DailyTask.py       # 一次性任务：日常任务聚合执行器（MRO 组合各子 Mixin）
 │       ├── DeliveryTask.py    # 一次性任务：自动送货（武陵，含滑索路径）
-│       ├── EssenceScanTask.py # 一次性任务：基质扫描、自动上锁/弃置
 │       ├── PeriodicScreenshotTask.py # 一次性任务：定时截图（用于样本采集）
 │       ├── sequence_parser.py  # 排轴字符串解析器：将 "ult_2,1,e,sleep_8" 转为可执行动作序列
 │       ├── TakeDeliveryTask.py# 一次性任务：自动接取高价值运送委托（OCR+模板匹配）
@@ -186,13 +184,15 @@ ok-end-field/
 │   ├── 自动送货.md
 │   ├── 运送委托接取.md
 │   ├── 仓库物品转移.md
-│   ├── 毕业基质识别.md
+│   ├── 物品导航与实时检测.md
 │   ├── 账号配置用户指南.md
 │   ├── 账号唯一ID与多账户覆盖默认逻辑.md
 │   └── dev/                   # 面向开发者的技术文档
 │       ├── QUICKSTART.md
 │       ├── DEVELOPMENT.md
 │       ├── API.md
+│       ├── i18n_OCR配置流程.md
+│       ├── 装备词条识别轮子.md
 │       ├── 文字识别示例.md
 │       ├── 图像模板匹配示例.md
 │       ├── 滑索与送货逻辑.md
@@ -214,17 +214,13 @@ ok-end-field/
 │
 ├── icons/                     # 程序图标
 │
-├── readme/                    # README 配图（1.jpg ~ 5.jpg）
-│
 ├── tests/                     # 单元测试
 │   ├── TestAutoCombat.py          # 战斗状态识别测试
-│   ├── TestEssenceGoldGrid.py     # 基质金色格子识别测试
-│   ├── TestEssenceImageFeatures.py# 基质图像特征测试
-│   ├── TestEssenceRecognizer.py   # 基质 OCR 解析逻辑测试
+│   ├── TestEssenceImageFeatures.py# 装备词条图像特征资产测试
+│   ├── TestEssenceRecognizer.py   # 装备词条 OCR 解析逻辑测试
 │   ├── TestSequenceParser.py      # 排轴序列解析测试（覆盖技能/等待等动作解析）
 │   ├── TestTakeDeliveryFunctions.py # 运送委托接取逻辑测试
-│   ├── TestWarehouseSwitchOCR.py  # 仓库切换 OCR 测试
-│   └── images/                    # 测试用截图样本
+│   └── TestWarehouseSwitchOCR.py  # 仓库切换 OCR 测试
 │
 ├── .github/
 │   ├── workflows/
@@ -412,17 +408,16 @@ python -m unittest tests/TestAutoCombat.py
 
 | 文件 | 测试内容 |
 |------|----------|
-| `TestAutoCombat.py` | 战斗/非战斗状态图像识别（使用 `tests/images/` 截图样本） |
-| `TestEssenceRecognizer.py` | 基质 OCR 解析逻辑（`parse_essence_panel`、`_attach_levels`） |
-| `TestEssenceGoldGrid.py` | 基质金色格子图像识别 |
-| `TestEssenceImageFeatures.py` | 基质图像 Feature 匹配 |
+| `TestAutoCombat.py` | 战斗/非战斗状态图像识别 |
+| `TestEssenceRecognizer.py` | 装备词条 OCR 解析逻辑（`parse_essence_panel`、`_attach_levels`） |
+| `TestEssenceImageFeatures.py` | 装备词条图像 Feature 资产匹配 |
 | `TestTakeDeliveryFunctions.py` | 运送委托接取 OCR 结果处理逻辑（`process_ocr_results`） |
 | `TestWarehouseSwitchOCR.py` | 仓库切换 OCR 识别 |
 
 ### 测试注意事项
 
-- 测试全部为**离线单元测试**（使用本地截图样本），不需要运行游戏。
-- 新功能开发时，将相关截图放入 `tests/images/`，编写对应 unittest。
+- 测试全部为**离线单元测试**，不需要运行游戏。
+- 新功能开发时，如需截图样本，请在对应测试旁新增明确命名的样本目录并在测试中引用。
 - CI 会在每次打 tag 前自动运行所有测试，测试失败则中止发布。
 
 ---
@@ -440,12 +435,21 @@ python -m unittest tests/TestAutoCombat.py
 2. checkout（含 LFS）
 3. 安装 Python 3.12 + requirements.txt
 4. 内联 ok-script 源码（inline_ok_requirements）—— 减小用户更新包体积
-5. 运行 tests/ 全部单元测试
-6. 同步部分文件到更新库（cnb.cool + GitHub）—— 供已安装用户增量更新
+5. 运行 `./run_tests.ps1` 中的全部单元测试
+6. 按 `deploy.txt` 同步部分文件到更新库（cnb.cool + GitHub）—— 供已安装用户增量更新；其中 `ok` 目录由上一步内联 ok-script 源码生成
 7. PyAppify 打包 exe（China / Global 两个 Profile）
 8. 发布 GitHub Release（附带更新日志 + 安装包）
 9. 触发 Mirror 酱上传 & 发布说明 workflow
 ```
+
+### 下载统计 workflow
+
+`.github/workflows/download_stats.yml` 每天或手动触发 `scripts/download_stats.py`，生成并提交 `assets/downloads.svg`。
+
+环境变量：
+
+- `GITHUB_TOKEN`：由 GitHub Actions 注入，用于访问 release 下载数据并提交生成后的 SVG。
+- `GITHUB_REPOSITORY`：由 GitHub Actions 注入；本地运行脚本时可省略，默认使用 `AliceJump/ok-end-field`。
 
 ### 手动打版本
 
@@ -476,6 +480,8 @@ python auto_release.py
 - [x] **自动跳过剧情**：识别跳过按钮并自动确认
 - [x] **自动拾取**：大世界白名单/黑名单过滤自动采集
 - [x] **自动登录**：自动完成登录流程并领取月卡奖励
+- [x] **物品导航**：通过本地 WebSocket 位置数据指向已选物品最近点，支持按键标记已获取
+- [x] **实时检测**：循环执行 YOLO 检测，用于在线观察模型和目标识别结果
 
 ### 一次性任务
 
@@ -498,7 +504,6 @@ python auto_release.py
 - [x] **自动送货**（武陵，滑索路径配置化，支持多目标 NPC）
 - [x] **运送委托接取**（OCR 识别奖励金额 + 图标识别券种，自动抢单）
 - [x] **仓库物品转移**（发货仓库 → 收货仓库，支持多轮次）
-- [x] **基质扫描**（OCR 解析词条，自动上锁毕业基质/弃置垃圾基质）
 - [x] **定时截图**（数据采集 / YOLO 样本收集辅助工具）
 
 ### 底层能力
@@ -527,7 +532,7 @@ python auto_release.py
 | 🔴 | 大世界自动巡逻采集 | 按预设路线自动移动并触发 AutoPickTask | ⬜ |
 | 🔴 | 更多据点/地区支持 | 随版本更新扩充 `world_map.py`（地区、据点、货品） | 🔄 |
 | 🟡 | 更多干员联络支持 | 持续更新 `characters.py` 以支持新干员 | 🔄 |
-| 🟡 | 基质扫描：更多词条规则 | 扩充 `weapon_data.py` 覆盖更多武器/基质毕业标准 | ⬜ |
+| 🟢 | 装备词条识别轮子维护 | 按后续需求扩充 `src/essence` 的 OCR 解析与 CSV 匹配能力 | ⬜ |
 | 🟡 | 仓库转移：更多物品 | 扩充 `item_to_warehouse_dict` 和 `ITEM_TRANSLATION_DICT` | ⬜ |
 
 ### 工程质量
