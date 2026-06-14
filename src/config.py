@@ -4,7 +4,7 @@ import numpy as np
 from src.interaction.EfInteraction import EfInteraction
 from src.tasks.daily.finally_file import decode
 
-version = "v0.3.46"
+version = "v0.3.47"
 
 
 # 不需要修改version, Github Action打包会自动修改
@@ -72,7 +72,7 @@ config = {
     },
     "windows": {  # Windows游戏请填写此设置
         "exe": ["Endfield.exe"],
-        # 'hwnd_class': 'UnrealWindow', #增加重名检查准确度
+        'hwnd_class': 'UnityWndClass', #增加重名检查准确度
         # GUI 需要可迭代配置；设备管理器需要类对象，使用包装器同时满足两者。
         "interaction": [EfInteraction],
         # Genshin:某些操作可以后台, 部分游戏支持 PostMessage:可后台点击, 极少游戏支持 ForegroundPostMessage:前台使用PostMessage Pynput/PyDirect:仅支持前台使用
