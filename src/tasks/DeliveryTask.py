@@ -35,7 +35,8 @@ secondary_objective_direction_dot = [
     fL.secondary_objective_direction_dot,
     fL.secondary_objective_direction_dot_light,
     fL.secondary_objective_direction_dot_light_two,
-    fL.secondary_objective_direction_dot_light_three
+    fL.secondary_objective_direction_dot_light_three,
+    fL.secondary_objective_direction_dot_light_fourth
 ]
 
 
@@ -467,7 +468,6 @@ class DeliveryTask(AccountMixin, ZipLineMixin, MapMixin):
                 )
                 if results:
                     break
-            0.691, 0.322, 0.873, 0.319
             if results:
                 for result in results:
                     self.click(
