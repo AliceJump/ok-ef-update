@@ -4,7 +4,7 @@ import numpy as np
 from src.interaction.EfInteraction import EfInteraction
 from src.tasks.daily.finally_file import decode
 
-version = "v0.3.74"
+version = "v0.3.75"
 
 
 # 不需要修改version, Github Action打包会自动修改
@@ -127,27 +127,27 @@ config = {
     "version": version,  # 版本
     "my_app": ["src.globals", "Globals"],  # 可选. 全局单例对象, 可以存放加载的模型, 使用og.my_app调用
     "onetime_tasks": [  # 用户点击触发的任务
-        ["src.tasks.DailyTask", "DailyTask"],
-        ["src.tasks.TakeDeliveryTask", "TakeDeliveryTask"],
-        ["src.tasks.WarehouseTransferTask", "WarehouseTransferTask"],
-        ["src.tasks.DeliveryTask", "DeliveryTask"],
-        ["src.tasks.BattleTask", "BattleTask"],
-        ["src.tasks.DemoDrawTask", "DemoDrawTask"],
-        ["src.tasks.Test", "Test"],
-        ["src.tasks.YingTuoTask", "YingTuoTask"],
-        ["src.tasks.TestStartGame", "TestStartGame"],
-        ["src.tasks.RealtimeDetectTask", "RealtimeDetectTask"],
-        ["src.tasks.DiagnosisTask", "DiagnosisTask"],
+        ["src.tasks.onetime.DailyTask", "DailyTask"],
+        ["src.tasks.onetime.TakeDeliveryTask", "TakeDeliveryTask"],
+        ["src.tasks.onetime.WarehouseTransferTask", "WarehouseTransferTask"],
+        ["src.tasks.onetime.DeliveryTask", "DeliveryTask"],
+        ["src.tasks.onetime.BattleTask", "BattleTask"],
+        ["src.tasks.onetime.DemoDrawTask", "DemoDrawTask"],
+        ["src.tasks.onetime.Test", "Test"],
+        ["src.tasks.onetime.YingTuoTask", "YingTuoTask"],
+        ["src.tasks.onetime.TestStartGame", "TestStartGame"],
+        ["src.tasks.onetime.RealtimeDetectTask", "RealtimeDetectTask"],
+        ["src.tasks.onetime.DiagnosisTask", "DiagnosisTask"],
     ],
     "custom_tabs": [
         ["src.gui.GlobalConfigTab", "GlobalConfigTab"],
         ["src.gui.AccountConfigTab", "AccountConfigTab"],
     ],
     "trigger_tasks": [  # 不断执行的触发式任务
-        ["src.tasks.AutoCombatTask", "AutoCombatTask"],
-        ["src.tasks.AutoInteractionTask", "AutoInteractionTask"],
-        ["src.tasks.AutoPickTask", "AutoPickTask"],
-        ["src.tasks.AutoLoginTask", "AutoLoginTask"],
-        ["src.tasks.ItemNavigatorTask", "ItemNavigatorTask"],
+        ["src.tasks.trigger.AutoCombatTask", "AutoCombatTask"],
+        ["src.tasks.trigger.AutoInteractionTask", "AutoInteractionTask"],
+        ["src.tasks.trigger.AutoPickTask", "AutoPickTask"],
+        ["src.tasks.trigger.AutoLoginTask", "AutoLoginTask"],
+        ["src.tasks.trigger.ItemNavigatorTask", "ItemNavigatorTask"],
     ],
 }
