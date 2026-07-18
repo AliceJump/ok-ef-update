@@ -4,7 +4,7 @@ import numpy as np
 from src.interaction.EfInteraction import EfInteraction
 from src.tasks.daily.finally_file import decode
 
-version = "v0.3.90"
+version = "v0.3.91"
 
 
 # 不需要修改version, Github Action打包会自动修改
@@ -147,7 +147,6 @@ config = {
         ["src.tasks.trigger.AutoCombatTask", "AutoCombatTask"],
         ["src.tasks.trigger.AutoInteractionTask", "AutoInteractionTask"],
         ["src.tasks.trigger.AutoPickTask", "AutoPickTask"],
-        ["src.tasks.trigger.AutoLoginTask", "AutoLoginTask"],
         ["src.tasks.trigger.ItemNavigatorTask", "ItemNavigatorTask"],
     ],
 }
