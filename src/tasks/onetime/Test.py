@@ -30,4 +30,3 @@ class Test(MouseScanMixin):
 
     def run(self):
         self.drag_scan_area((354/1920,382/1080),(1526/1920,768/1080))
-        
