@@ -4,7 +4,6 @@ from datetime import datetime
 
 import cv2
 import numpy as np
-from pynput.keyboard import Key
 
 from src.data.world_map import areas_list
 from src.data.world_map_utils import get_world_map_matcher, get_world_map_text
@@ -157,9 +156,7 @@ class GameFlowMixin:
                 self.log_info("skip_dialog 超时退出")
                 return False
             if self.find_one("skip_dialog_esc", horizontal_variance=0.05):
-                self.keyboard.press(Key.esc)
-                self.keyboard.release(Key.esc)
-                self.sleep(0.1)
+                self.send_key("esc", after_sleep=0.1)
                 start = self.active_time()
                 clicked_confirm = False
                 while self.active_time() - start < 3:
