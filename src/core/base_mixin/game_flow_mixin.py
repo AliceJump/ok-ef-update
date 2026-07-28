@@ -4,6 +4,7 @@ from datetime import datetime
 
 import cv2
 import numpy as np
+from pynput.keyboard import Key
 
 from src.data.world_map import areas_list
 from src.data.world_map_utils import get_world_map_matcher, get_world_map_text
@@ -15,6 +16,11 @@ from src.data.FeatureList import FeatureList as fL
 
 class GameFlowMixin:
     """登录弹窗、主界面状态与场景导航流程能力。"""
+
+    def press_esc(self):
+        """仅过剧情（对话时）使用的 ESC 触发函数。"""
+        self.keyboard.press(Key.esc)
+        self.keyboard.release(Key.esc)
 
     def login_screenshot(self, need_active=True):
         """
@@ -156,7 +162,8 @@ class GameFlowMixin:
                 self.log_info("skip_dialog 超时退出")
                 return False
             if self.find_one("skip_dialog_esc", horizontal_variance=0.05):
-                self.send_key("esc", after_sleep=0.1)
+                self.press_esc()
+                self.sleep(0.1)
                 start = self.active_time()
                 clicked_confirm = False
                 while self.active_time() - start < 3:
@@ -397,7 +404,7 @@ class GameFlowMixin:
             )
             or self.find_one(
                 feature=fL.to_max_produce_num,
-                box=self.box_of_screen(0.550, 0.885, 0.573, 0.920)
+                box=self.box_of_screen(0.550, 0.885, 0.573, 0.950)
             )
             or self.find_one(
                 feature=fL.left_battle,
