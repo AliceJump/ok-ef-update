@@ -4,7 +4,7 @@ import numpy as np
 from src.interaction.EfInteraction import EfInteraction
 from src.tasks.daily.finally_file import decode
 
-version = "v1.0.4"
+version = "v1.0.5"
 
 
 # 不需要修改version, Github Action打包会自动修改
