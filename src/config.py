@@ -4,7 +4,7 @@ import numpy as np
 from src.interaction.EfInteraction import EfInteraction
 from src.tasks.daily.finally_file import decode
 
-version = "v1.0.10"
+version = "v1.0.11"
 
 
 # 不需要修改version, Github Action打包会自动修改
@@ -144,6 +144,7 @@ config = {
         ["src.tasks.onetime.TestStartGame", "TestStartGame"],
         ["src.tasks.test.RealtimeDetectTask", "RealtimeDetectTask"],
         ["src.tasks.test.DiagnosisTask", "DiagnosisTask"],
+        ["src.tasks.test.TestBattleSlotDetect", "TestBattleSlotDetect"],
     ],
     "custom_tabs": [
         ["src.gui.GlobalConfigTab", "GlobalConfigTab"],
