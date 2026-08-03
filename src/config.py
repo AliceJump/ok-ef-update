@@ -4,7 +4,7 @@ import numpy as np
 from src.interaction.EfInteraction import EfInteraction
 from src.tasks.daily.finally_file import decode
 
-version = "v1.0.5"
+version = "v1.0.8"
 
 
 # 不需要修改version, Github Action打包会自动修改
@@ -133,11 +133,17 @@ config = {
         ["src.tasks.onetime.DeliveryTask", "DeliveryTask"],
         ["src.tasks.onetime.BattleTask", "BattleTask"],
         ["src.tasks.onetime.DemoDrawTask", "DemoDrawTask"],
-        ["src.tasks.onetime.Test", "Test"],
+        ["src.tasks.test.TestBattleToEnd", "TestBattleToEnd"],
+        ["src.tasks.test.TestArrowAngle", "TestArrowAngle"],
+        ["src.tasks.test.TestDragScan", "TestDragScan"],
+        ["src.tasks.test.TestPauseTiming", "TestPauseTiming"],
+        ["src.tasks.test.TestBlueDotAlign", "TestBlueDotAlign"],
+        ["src.tasks.test.TestLevelRead", "TestLevelRead"],
+        ["src.tasks.test.TestDemoGraphic", "TestDemoGraphic"],
         ["src.tasks.onetime.YingTuoTask", "YingTuoTask"],
         ["src.tasks.onetime.TestStartGame", "TestStartGame"],
-        ["src.tasks.onetime.RealtimeDetectTask", "RealtimeDetectTask"],
-        ["src.tasks.onetime.DiagnosisTask", "DiagnosisTask"],
+        ["src.tasks.test.RealtimeDetectTask", "RealtimeDetectTask"],
+        ["src.tasks.test.DiagnosisTask", "DiagnosisTask"],
     ],
     "custom_tabs": [
         ["src.gui.GlobalConfigTab", "GlobalConfigTab"],
