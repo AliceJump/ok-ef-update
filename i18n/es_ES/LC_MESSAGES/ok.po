@@ -562,6 +562,9 @@ msgstr "⭐ Recolección del Dijiang"
 msgid "⭐据点兑换"
 msgstr "⭐ Intercambio del puesto"
 
+msgid "⭐地区建设"
+msgstr "⭐ Operaciones regionales"
+
 msgid "⭐收信用"
 msgstr "⭐ Recoger Crédito"
 
@@ -573,9 +576,6 @@ msgstr "⭐ Recompensas Diarias"
 
 msgid "⭐简易制作"
 msgstr "⭐ Fabricación sencilla"
-
-msgid "⭐转交委托奖励领取"
-msgstr "⭐ Recoger recompensas transferidas"
 
 msgid "⭐转交运送委托"
 msgstr "⭐ Transferir encargos de entrega"
@@ -1056,9 +1056,6 @@ msgstr ""
 msgid "实时检测"
 msgstr "Detección en Tiempo Real"
 
-msgid "帝江号收菜操作"
-msgstr "Operaciones de recolección del Dijiang"
-
 msgid "庄方宜"
 msgstr "Zhuang Fangyi"
 
@@ -1254,9 +1251,6 @@ msgstr "Una cuenta (teléfono) por línea, sin contraseña"
 
 msgid "油猴脚本帮助"
 msgstr "Ayuda del script de Tampermonkey"
-
-msgid "活动奖励"
-msgstr "Recompensas de Evento"
 
 msgid "浏览器油猴脚本帮助"
 msgstr "Ayuda del script de Tampermonkey del navegador"

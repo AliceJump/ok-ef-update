@@ -567,19 +567,19 @@ class BattleMixin(BaseEfTask):
                 self.log_info("自动战斗超时")
                 return False
 
-            # 战斗结束后轮询结算状态，成功路径不再固定等待 5 秒。
+            # 内层退出后继续走战斗检测：结算模板立即结束，
+            # 未检测到战斗时最多等待 15 秒。
             if last_battle_time:
                 battle_elapsed = self.active_time() - last_battle_time
-                settlement = self.wait_until(
-                    self.is_battle_settlement,
-                    time_out=max(0.01, 15 - battle_elapsed),
-                    raise_if_not_found=False,
-                )
-                if settlement:
+                self.next_frame()
+
+                if self.is_battle_settlement():
                     self.log_info("检测到战斗结算状态，战斗完成")
-                else:
+                    return True
+
+                if battle_elapsed >= 15:
                     self.log_info("战斗结束状态等待超时，继续后续结算检测")
-                return True
+                    return True
 
             # 检测战斗
             battle_detected = AutoCombatLogic(self).run(
