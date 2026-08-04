@@ -1,4 +1,5 @@
 from qfluentwidgets import FluentIcon
+from src.data.FeatureList import FeatureList as fL
 
 from src.tasks.account.account_mixin import AccountMixin
 from src.tasks.daily.daily_battle_mixin import DailyBattleFeature
@@ -8,6 +9,7 @@ from src.tasks.daily.daily_routine_mixin import DailyRoutineFeature
 from src.tasks.daily.daily_shop_mixin import DailyShopFeature
 from src.tasks.daily.daily_trade_mixin import DailyTradeFeature
 from src.tasks.daily.daily_demo_mixin import DailyDemoFeature
+from src.tasks.daily.daily_regional_runner import DailyRegionalRunner
 from src.tasks.daily.finally_file import (
     create_task_summary_report,
 )
@@ -37,6 +39,17 @@ class DailyTask(
 ):
     """日常任务聚合执行器。"""
 
+    BOAT_STATE_TASK_KEYS = frozenset({
+        "⭐帝江号一键存放",
+        "⭐简易制作",
+        "⭐帝江号收菜",
+    })
+    MULTI_SELECTION_TASK_KEYS = frozenset({
+        "⭐地区建设",
+        "⭐帝江号收菜",
+        "⭐活动奖励",
+    })
+
     account_config_blacklist = {
         "发生异常时终止游戏",
         "仅退出游戏",
@@ -64,6 +77,7 @@ class DailyTask(
         self.daily_routine = DailyRoutineFeature(self)
         self.daily_liaison = DailyLiaisonFeature(self)
         self.daily_demo = DailyDemoFeature(self)
+        self.daily_regional = DailyRegionalRunner(self)
 
         self.config_description.update(
             {
@@ -81,6 +95,7 @@ class DailyTask(
             ),
         )
         self.default_config.update({
+            "⭐地区建设": DailyRegionalRunner.DEFAULT_OPTIONS,
             "⭐传送到帝江号右侧传送点": True,
             "配置选择": "⭐⭐⭐ 默认",
             "发生异常时终止游戏": False,
@@ -88,9 +103,22 @@ class DailyTask(
             "自动打开汇总文件": True,
         })
         self.config_description.update({
+            "⭐地区建设": (
+                "按地区执行所选操作：先据点兑换，再执行买卖货的买；启用买物资时，买完后切换到稳定物资需求购买，最后切回弹性需求物资执行卖。"
+            ),
+            "⭐传送到帝江号右侧传送点": "是否在日常任务结束后传送到帝江号右侧传送点。",
             "自动打开汇总文件": "任务完成后自动用系统默认程序打开汇总文件。关闭则仅创建文件不打开。",
         })
-        task_group = {"⭐⭐⭐ 默认": [i for i, _ in self.build_task_plan()] + ["⭐执行外部命令"]}
+        self.config_type["⭐地区建设"] = {
+            "type": "multi_selection",
+            "options": DailyRegionalRunner.OPTIONS,
+        }
+        task_group = {
+            "⭐⭐⭐ 默认": [
+                i for i, _ in self.build_task_plan()
+                if i not in self.MULTI_SELECTION_TASK_KEYS
+            ] + ["⭐地区建设", "⭐帝江号收菜", "⭐活动奖励", "⭐执行外部命令"],
+        }
 
         # 合并两个分组字典
         all_groups = {**task_group, **self.default_config_group, **{"其他配置": ["发生异常时终止游戏", "仅退出游戏", "自动打开汇总文件"]}}
@@ -104,18 +132,15 @@ class DailyTask(
         return [
             ("⭐送礼", self.daily_liaison.execute_gift_task),
             ("⭐帝江号一键存放", self.daily_liaison.boat_one_key_store),
-            ("⭐收邮件", self.daily_routine.claim_mail),
-            ("⭐据点兑换", self.daily_routine.exchange_outpost_goods),
-            ("⭐转交运送委托", self.daily_routine.delivery_send_others),
-            ("⭐转交委托奖励领取", self.daily_routine.claim_delivery_rewards),
-            ("⭐造装备", self.daily_routine.make_weapon),
             ("⭐简易制作", self.daily_routine.make_simply),
-            ("⭐收信用", self.daily_routine.collect_credit),
             ("⭐帝江号收菜", self.daily_routine.boat_claim_rewards),
+            ("⭐收邮件", self.daily_routine.claim_mail),
+            ("⭐转交运送委托", self.daily_routine.delivery_send_others),
+            ("⭐地区建设", self.daily_regional.run),
+            ("⭐造装备", self.daily_routine.make_weapon),
+            ("⭐收信用", self.daily_routine.collect_credit),
             ("⭐买信用商店", self.daily_shop.credit_shop),
-            ("⭐买卖货", self.daily_trade.buy_sell),
             ("⭐刷体力", self.daily_battle.battle),
-            ("⭐买物资", self.daily_buy.buy_staple_goods),
             ("⭐活动奖励", self.daily_routine.claim_activity_rewards),
             ("⭐日常奖励", self.daily_routine.claim_daily_rewards),
             ("⭐演算", self.daily_demo.battle_demo),
@@ -134,7 +159,11 @@ class DailyTask(
                 task_plan.insert(0, end_cmd_task)
             else:
                 task_plan.append(end_cmd_task)
-            self.daily_runner = DailyTaskRunner(self, task_plan)
+            self.daily_runner = DailyTaskRunner(
+                self,
+                task_plan,
+                shared_state_task_keys=self.BOAT_STATE_TASK_KEYS,
+            )
             self.daily_runner.run(repeat_times=repeat_times)
         finally:
             self.run_daily_finally()
