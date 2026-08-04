@@ -203,7 +203,7 @@ class BattleMixin(BaseEfTask):
 
         return False
 
-    def in_combat(self, required_yellow=0):
+    def in_combat(self, required_yellow=1):
         """
         判断当前是否处于战斗中。
 
@@ -227,30 +227,58 @@ class BattleMixin(BaseEfTask):
         判断当前是否处于队伍状态。
         """
 
-        skill_bar_count = self.get_skill_bar_count()
-        expected_skill = 1
         found_skills = 0
+        sequence_valid = False
         skill_checks = []
-        for box_index, box in enumerate(self._battle_feature_boxes("skill"), start=1):
-            if expected_skill > 4:
-                break
-            feature = f"skill_{expected_skill}"
-            result = self.find_one(feature, box=box)
+        boxes = self._battle_feature_boxes("skill")
+        for box_index, box in enumerate(boxes, start=1):
+            result = self.find_one("skill_1", box=box)
             match_position = f"({result.x},{result.y})" if result is not None else "-"
+            match_score = f"{result.confidence:.3f}" if result is not None else "-"
             skill_checks.append(
-                f"{feature}->框{box_index}({box.x},{box.y},{box.width},{box.height}) "
-                f"{'命中' if result is not None else '未命中'}@{match_position}"
+                f"skill_1->框{box_index}({box.x},{box.y},{box.width},{box.height}) "
+                f"{'命中' if result is not None else '未命中'}@{match_position}, score={match_score}"
             )
-            if result is not None:
-                found_skills += 1
-                expected_skill += 1
+            if result is None:
+                continue
+
+            if box_index == len(boxes):
+                # skill_1 位于最后一个框时，表示单人队伍。
+                found_skills = 1
+                sequence_valid = True
+                break
+
+            matched_skills = 1
+            for skill_offset in range(1, len(boxes) - box_index + 1):
+                skill_number = skill_offset + 1
+                next_box = boxes[box_index + skill_offset - 1]
+                next_result = self.find_one(f"skill_{skill_number}", box=next_box)
+                next_position = (
+                    f"({next_result.x},{next_result.y})" if next_result is not None else "-"
+                )
+                next_score = f"{next_result.confidence:.3f}" if next_result is not None else "-"
+                skill_checks.append(
+                    f"skill_{skill_number}->框{box_index + skill_offset}"
+                    f"({next_box.x},{next_box.y},{next_box.width},{next_box.height}) "
+                    f"{'命中' if next_result is not None else '未命中'}@{next_position}, "
+                    f"score={next_score}"
+                )
+                if next_result is not None:
+                    matched_skills += 1
+                    if matched_skills >= 2:
+                        # 起始框决定队伍人数；第二个技能模板命中后即可确认队伍状态。
+                        found_skills = len(boxes) - box_index + 1
+                        sequence_valid = True
+                        break
+
+            if sequence_valid:
+                break
         self._battle_member_count = found_skills
-        has_yellow_skill_bar = skill_bar_count >= 1
         self.log_debug(
-            f"队伍人数检测: {found_skills} 人，黄色技能条={skill_bar_count}，"
+            f"队伍人数检测: {found_skills} 人，"
             f"检查结果: {'; '.join(skill_checks)}"
         )
-        return found_skills >= 1 and has_yellow_skill_bar
+        return sequence_valid and found_skills >= 1
 
     def _battle_feature_boxes(self, prefix: str):
         """按模板初始位置的 x 坐标返回四个独立搜索框。"""
@@ -323,9 +351,10 @@ class BattleMixin(BaseEfTask):
         )
         result = self.find_one(feature, box=boxes[current_index])
         match_position = f"({result.x},{result.y})" if result is not None else "-"
+        match_score = f"{result.confidence:.3f}" if result is not None else "-"
         self.log_debug(
             f"模板匹配结果: {feature}->框{current_index + 1}, "
-            f"{'命中' if result is not None else '未命中'}@{match_position}"
+            f"{'命中' if result is not None else '未命中'}@{match_position}, score={match_score}"
         )
         return result
 
