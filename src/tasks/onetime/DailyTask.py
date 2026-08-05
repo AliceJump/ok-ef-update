@@ -18,6 +18,7 @@ import os
 import webbrowser
 from pathlib import Path
 from src.tasks.daily.daily_task_runner import DailyTaskRunner
+from src.tasks.onetime.DeliveryTask import DeliveryFeature
 from src.tasks.mixin.end_command_mixin import EndCommandMixin
 from src.tasks.mixin.common import Common
 from src.tasks.mixin.map_mixin import MapMixin
@@ -25,6 +26,7 @@ from src.tasks.mixin.zip_line_mixin import ZipLineMixin
 from src.tasks.mixin.battle_mixin import BattleMixin
 from src.tasks.mixin.liaison_mixin import LiaisonMixin
 from src.tasks.mixin.mouse_scan_mixin import MouseScanMixin
+from src.core.config_migration import legacy_bool_switch_to_list, merge_bool_options
 
 
 class DailyTask(
@@ -38,6 +40,32 @@ class DailyTask(
     MouseScanMixin
 ):
     """日常任务聚合执行器。"""
+
+    # 旧版日常配置键迁移（CodeRabbit 线程4/8）：
+    # 纯键名复制（config_key_migrations）由 BaseEfTask.load_config 走 MRO 自动收集；
+    # 值转换（config_value_migrations）处理旧布尔开关 → 多选列表，
+    # 两类迁移均为类属性声明方式，逻辑集中在 src/core/config_migration.py。
+    config_key_migrations = {
+        "帝江号收菜操作": "⭐帝江号收菜",
+        "活动奖励": "⭐活动奖励",
+    }
+    config_value_migrations = {
+        # 旧版三个地区布尔开关 → 新的多选列表键。
+        "⭐地区建设": merge_bool_options({
+            "据点兑换": "⭐据点兑换",
+            "买物资": "⭐买物资",
+            "买卖货": "⭐买卖货",
+        }),
+        # 旧布尔开关 + 操作列表 → 新多选列表键。
+        "⭐帝江号收菜": legacy_bool_switch_to_list(
+            ops_key="帝江号收菜操作",
+            defaults=DailyRoutineFeature.BOAT_STAGES,
+        ),
+        "⭐活动奖励": legacy_bool_switch_to_list(
+            ops_key="活动奖励",
+            defaults=DailyRoutineFeature.ACTIVITY_REWARDS,
+        ),
+    }
 
     BOAT_STATE_TASK_KEYS = frozenset({
         "⭐帝江号一键存放",
@@ -78,6 +106,7 @@ class DailyTask(
         self.daily_liaison = DailyLiaisonFeature(self)
         self.daily_demo = DailyDemoFeature(self)
         self.daily_regional = DailyRegionalRunner(self)
+        self.delivery = DeliveryFeature(self)
 
         self.config_description.update(
             {
@@ -136,6 +165,7 @@ class DailyTask(
             ("⭐帝江号收菜", self.daily_routine.boat_claim_rewards),
             ("⭐收邮件", self.daily_routine.claim_mail),
             ("⭐转交运送委托", self.daily_routine.delivery_send_others),
+            ("⭐自动送货", self.delivery.run_daily),
             ("⭐地区建设", self.daily_regional.run),
             ("⭐造装备", self.daily_routine.make_weapon),
             ("⭐收信用", self.daily_routine.collect_credit),

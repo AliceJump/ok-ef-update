@@ -33,7 +33,9 @@ class DailyBuyFeature:
         #
         pl = [re.compile(i) for i in self.config.get("购物白名单", [])]
         #
-        for area in target_areas or areas_list:
+        if target_areas is None:
+            target_areas = areas_list
+        for area in target_areas:
             if not keep_area_context:
                 self.ensure_main()
             self.log_info(f"进入区域: {area}")
@@ -58,6 +60,8 @@ class DailyBuyFeature:
                 self.wait_ui_stable(refresh_interval=0.2)
                 self.log_info("购买「人文物产」")
                 self.buy(pattern_list=pl)
+
+        return True
 
     def buy(self, pattern_list=[]):
         good_list = [None]
