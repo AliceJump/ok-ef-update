@@ -119,19 +119,22 @@ ItemNavigatorTask(WsPositionMixin, BaseEfTask, TriggerTask)
 | 4 | `DeliveryTask` | `src.tasks.onetime.DeliveryTask` |
 | 5 | `BattleTask` | `src.tasks.onetime.BattleTask` |
 | 6 | `DemoDrawTask` | `src.tasks.onetime.DemoDrawTask` |
-| 7 | `TestBattleToEnd` | `src.tasks.test.TestBattleToEnd` |
-| 8 | `TestArrowAngle` | `src.tasks.test.TestArrowAngle` |
-| 9 | `TestDragScan` | `src.tasks.test.TestDragScan` |
-| 10 | `TestPauseTiming` | `src.tasks.test.TestPauseTiming` |
-| 11 | `TestBlueDotAlign` | `src.tasks.test.TestBlueDotAlign` |
-| 12 | `TestLevelRead` | `src.tasks.test.TestLevelRead` |
-| 13 | `TestDemoGraphic` | `src.tasks.test.TestDemoGraphic` |
-| 14 | `YingTuoTask` | `src.tasks.onetime.YingTuoTask` |
-| 15 | `TestStartGame` | `src.tasks.onetime.TestStartGame` |
+| 7 | `YingTuoTask` | `src.tasks.onetime.YingTuoTask` |
+| 8 | `TestStartGame` | `src.tasks.onetime.TestStartGame` |
+| 9 | `TestBattleToEnd` | `src.tasks.test.TestBattleToEnd` |
+| 10 | `TestArrowAngle` | `src.tasks.test.TestArrowAngle` |
+| 11 | `TestDragScan` | `src.tasks.test.TestDragScan` |
+| 12 | `TestPauseTiming` | `src.tasks.test.TestPauseTiming` |
+| 13 | `TestBlueDotAlign` | `src.tasks.test.TestBlueDotAlign` |
+| 14 | `TestLevelRead` | `src.tasks.test.TestLevelRead` |
+| 15 | `TestDemoGraphic` | `src.tasks.test.TestDemoGraphic` |
 | 16 | `RealtimeDetectTask` | `src.tasks.test.RealtimeDetectTask` |
 | 17 | `DiagnosisTask` | `src.tasks.test.DiagnosisTask` |
 | 18 | `TestBattleSlotDetect` | `src.tasks.test.TestBattleSlotDetect` |
 | 19 | `TestCombatTemplateMatch` | `src.tasks.test.TestCombatTemplateMatch` |
+| 20 | `MouseRotationCalibration` | `src.tasks.test.MouseRotationCalibration` |
+
+一次性任务按「业务任务（`src.tasks.onetime.*`）→ 调试/测试任务（`src.tasks.test.*`）」分组排列。
 
 `PeriodicScreenshotTask.py` 存在但未注册。`TakeDeliveryTask` 的类声明还包含 `TriggerTask`，但它当前只注册在一次性任务列表中。
 
@@ -153,13 +156,14 @@ ItemNavigatorTask(WsPositionMixin, BaseEfTask, TriggerTask)
 
 ## 4. 当前目录
 
-以下只列开发时需要理解和维护的文件，不包含运行缓存、日志、截图、IDE 元数据和生成目录。
+以下只列开发时需要理解和维护的文件，不包含运行缓存、日志、截图、IDE 元数据和生成的文件、目录。
 
 ```text
 ok-end-field/
 ├── main.py / main_debug.py       # 正式/调试入口，均安装启动补丁
-├── requirements.in/.txt         # 顶层依赖和锁定依赖
-├── run_tests.ps1                 # 逐个运行 tests/*.py
+├── pyproject.toml                # 项目 Python 依赖声明
+├── requirements.txt              # 由 uv 针对平台生成，供发布流水线 pip 使用
+├── run_tests.ps1                 # 逐个运行 tests/*.py（经 uv run）
 ├── pyappify.yml                  # China/Global 打包 profile
 ├── deploy.txt                    # tag 构建时同步到更新仓库的清单
 ├── auto_release.py/.ps1/.sh      # tag 辅助脚本
@@ -221,15 +225,14 @@ ok-end-field/
 ```powershell
 git clone --recurse-submodules https://github.com/AliceJump/ok-end-field.git
 Set-Location ok-end-field
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe main_debug.py
+uv sync
+uv run python main_debug.py
 ```
 
 约束：
 
 - 使用 Python 3.12 与当前 CI/打包环境保持一致。
+- 依赖通过 [uv](https://docs.astral.sh/uv/) 管理：`uv sync` 依照 `uv.lock` 创建 `.venv`；`uv run python ...` 在该环境中执行 Python。`requirements.txt` 是面向发布流水线的派生产物，不要手动编辑。
 - Windows 交互需要进程权限不低于游戏，开发时通常以管理员权限启动 IDE/终端。
 - 从仓库根目录运行，资源和配置路径大量以当前工作目录解析。
 - 游戏窗口配置要求 16:9，最低 `1600x900`。
@@ -339,7 +342,7 @@ self.press_combat_key("e")      # combat
 
 ## 7. 测试清单
 
-当前 `tests/` 有 36 个测试模块：
+当前 `tests/` 有 37 个测试模块：
 
 | 文件 | 主要覆盖 |
 |------|----------|
@@ -367,6 +370,7 @@ self.press_combat_key("e")      # combat
 | `TestGuiI18n.py` | GUI 翻译调用和运行时采集污染 |
 | `TestItemMapQuery.py` | 物品地图查询和筛选 |
 | `TestLogZipDedup.py` | 日志打包图片去重 |
+| `TestMouseRotationCalibration.py` | 鼠标视角旋转系数标定角度差纯函数与任务注册 |
 | `TestOutpostExchange.py` | 据点兑换优先级与排除逻辑 |
 | `TestPoLocaleConsistency.py` | gettext catalog 完整性和一致性 |
 | `TestPressEsc.py` | `press_esc` 走任务键盘控制器 |
@@ -383,7 +387,7 @@ self.press_combat_key("e")      # combat
 推荐从仓库根目录运行：
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -p "Test*.py"
+uv run python -m unittest discover -s tests -p "Test*.py"
 ```
 
 或使用仓库脚本：
@@ -392,7 +396,7 @@ self.press_combat_key("e")      # combat
 .\run_tests.ps1
 ```
 
-`run_tests.ps1` 使用命令名 `python`，不会自动选择 `.venv`；先激活虚拟环境，或直接使用上面的 `.venv` discover 命令。
+`run_tests.ps1` 通过 `uv run python` 在项目 `.venv` 中执行，无需手动激活虚拟环境。
 
 测试并非全是无资源的纯算法测试。部分依赖 `assets` 图片、OCR 样本、OpenCV、`ok-script` 的 `TaskTestCase` 或 Windows 相关导入。它们通常不要求正在运行游戏，但窗口交互流程仍必须实机验证。
 
@@ -403,7 +407,7 @@ self.press_combat_key("e")      # combat
 ```text
 checkout(LFS)
 -> Python 3.12
--> pip install requirements.txt
+-> pip install -r requirements.txt（requirements.txt 由 uv 从 pyproject.toml 生成）
 -> inline ok-script requirements
 -> 逐个运行 tests/*.py
 -> 按 deploy.txt 同步更新仓库
