@@ -1,6 +1,6 @@
 # ok-ef 开发者快速开始
 
-返回：[文档索引](../README.md) / [README](../../README.md)
+返回：[文档索引](../zh-CN/README.md) / [README](../../README.md)
 
 ## 1. 从源码运行
 
@@ -9,7 +9,7 @@
 | 操作系统 | Windows 10/11；交互、截图和登录流程依赖 Win32 |
 | Python | 3.12；CI 和 China 打包配置均固定为 3.12 |
 | 权限 | 建议管理员权限运行终端/IDE，以与游戏权限一致 |
-| 游戏窗口 | 16:9，最低 `1600x900`；见 `src/config.py` |
+| 游戏窗口 | 16:9，最低 `1920x1080`（1080P）；见 `src/config.py` |
 
 ```powershell
 git clone --recurse-submodules https://github.com/AliceJump/ok-end-field.git

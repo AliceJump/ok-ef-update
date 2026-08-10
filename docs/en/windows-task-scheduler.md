@@ -1,24 +1,24 @@
-# Windows 计划任务
+# Windows Task Scheduler
 
-返回：[文档索引](README.md) / [README](../README.md)
+Back: [Documentation home](index.md) / [README](../../README.md)
 
-ok-ef 提供了 [日常任务外部命令](./日常任务.md#执行外部命令) 和内置计划任务功能。
+ok-ef provides [daily task external commands](./daily-tasks.md) and built-in scheduled-task support.
 
-如果想要更高的自由度，可以使用 Windows 计划任务。
+For more freedom, you can use the Windows Task Scheduler.
 
-### 1. 从模版创建 pre-hook 和 post-hook 文件
+### 1. Create pre-hook and post-hook files from the templates
 
-下面的 `终末地.pre.ps1` 用于执行前清理旧日志，并可选地提前启动游戏等待热更新。修改路径后保存；示例兼容系统自带的 Windows PowerShell 5.1：
+The following `终末地.pre.ps1` cleans up old logs before execution and optionally starts the game early to wait for a hot update. Modify the paths and save; the examples are compatible with the built-in Windows PowerShell 5.1:
 
 ``` pwsh
 $ErrorActionPreference = "Stop"
 $efDir = "C:\Program Files\Hypergryph Launcher\games\Endfield Game"
 $okefDir = "C:\ok-ef"
 $workingDir = Join-Path $okefDir "data\apps\ok-ef\working"
-$hotUpdateMinutes = 5 # 设为 0 可跳过提前启动
+$hotUpdateMinutes = 5 # set to 0 to skip early startup
 
 if (-not (Test-Path -LiteralPath $workingDir -PathType Container)) {
-  throw "ok-ef 工作目录不存在: $workingDir"
+  throw "ok-ef working directory does not exist: $workingDir"
 }
 
 $logDir = Join-Path $workingDir "logs"
@@ -39,18 +39,18 @@ if (Test-Path -LiteralPath $logDir -PathType Container) {
 if ($hotUpdateMinutes -gt 0) {
   $gameExe = Join-Path $efDir "Endfield.exe"
   if (-not (Test-Path -LiteralPath $gameExe -PathType Leaf)) {
-    throw "游戏程序不存在: $gameExe"
+    throw "Game executable does not exist: $gameExe"
   }
   Start-Process -FilePath $gameExe -WorkingDirectory $efDir
   Start-Sleep -Seconds ($hotUpdateMinutes * 60)
   Get-Process -Name "Endfield" -ErrorAction SilentlyContinue | Stop-Process -Force
 }
 
-# 在这里加入自定义代码（例如消息通知）
+# Add your custom code here (e.g. message notification)
 
 ```
 
-下面的 `终末地.post.ps1` 等待任务退出，超时后结束相关进程，并归档日志与截图。`$maxMinutes` 包含前置脚本的热更新时间：
+The following `终末地.post.ps1` waits for the task to exit, ends the relevant processes on timeout, and archives logs and screenshots. `$maxMinutes` includes the pre-script's hot-update time:
 
 ``` pwsh
 $okefDir = "C:\ok-ef"
@@ -59,7 +59,7 @@ $maxMinutes = 44
 $hotUpdateMinutes = 5
 $deadline = (Get-Date).AddMinutes([Math]::Max(1, $maxMinutes - $hotUpdateMinutes))
 
-# `cmd /c start` 非阻塞，给 ok-ef 和游戏进程预留启动时间。
+# `cmd /c start` is non-blocking; leave startup time for ok-ef and the game process.
 Start-Sleep -Seconds 5
 do {
   $gameProcesses = @(Get-Process -Name "Endfield" -ErrorAction SilentlyContinue)
@@ -72,9 +72,9 @@ $timedOut = $gameProcesses.Count -gt 0 -or $okefProcesses.Count -gt 0
 if ($timedOut) {
   $gameProcesses | Stop-Process -Force
   $okefProcesses | Stop-Process -Force
-  $message = "执行超时；已终止仍在运行的游戏或 ok-ef 进程。"
+  $message = "Execution timed out; terminated the still-running game or ok-ef processes."
 } else {
-  $message = "执行结束。"
+  $message = "Execution finished."
 }
 
 $logPath = Join-Path $workingDir "logs\ok-script.log"
@@ -104,13 +104,13 @@ if (Test-Path -LiteralPath $screenshotDir -PathType Container) {
   }
 }
 
-# 在这里加入自定义代码（例如使用 $message 和 $version 发送通知）
+# Add your custom code here (e.g. send a notification using $message and $version)
 
 ```
 
-### 2. 创建计划任务文件并导入
+### 2. Create and import the scheduled-task file
 
-计划任务模版如下：
+The scheduled-task template is as follows:
 
 ``` xml
 <?xml version="1.0" encoding="UTF-16"?>
@@ -174,55 +174,27 @@ if (Test-Path -LiteralPath $screenshotDir -PathType Container) {
 </Task>
 ```
 
-复制内容到新 xml 文件，进行下列修改并保存：
+Copy the content into a new xml file, make the following changes, and save:
 
-1. 修改 `PLACEHOLDER_PATH_TO_OK_EF_APP_DIRECTORY` 为 ok-ef app 的绝对路径。
-2. 修改 `PLACEHOLDER_PATH_TO_PRE_SCRIPT_DIRECTORY` 为 `终末地.pre.ps1` 文件所在位置。
-3. 修改 `PLACEHOLDER_PATH_TO_POST_SCRIPT_DIRECTORY` 为 `终末地.post.ps1` 文件所在位置。
+1. Change `PLACEHOLDER_PATH_TO_OK_EF_APP_DIRECTORY` to the absolute path of the ok-ef app.
+2. Change `PLACEHOLDER_PATH_TO_PRE_SCRIPT_DIRECTORY` to the location of the `终末地.pre.ps1` file.
+3. Change `PLACEHOLDER_PATH_TO_POST_SCRIPT_DIRECTORY` to the location of the `终末地.post.ps1` file.
 
-`-t 1` 表示执行 [src/config.py](../src/config.py) 中 `onetime_tasks` 的第 1 项，即日常任务。列表顺序变化时编号也会变化；改成其他编号前应先核对当前注册顺序。`-e` 表示任务结束后退出 ok-ef。
+`-t 1` runs the 1st item of `onetime_tasks` in [src/config.py](../../src/config.py), i.e. Daily Tasks. The number changes when the list order changes; verify the current registration order before changing to another number. `-e` exits ok-ef after the task finishes.
 
-> **启动时自动校正索引**：通过 ok-ef 内置「计划任务」功能创建的任务（GUI 中「计划任务」标签页），其 `-t` 参数保存在 `configs/schedule_tasks_cache.json` 与 Windows 计划任务中。应用每次启动时会读取缓存里本应用（`\ok-ef\`）的任务，用其名称对照当前 `onetime_tasks` 顺序，自动把 `-t` 改写为正确的当前索引，并同步更新 Windows 计划任务。因此重排 `onetime_tasks` 后无需手动改编号——下次启动即自动校正；若本次是由计划任务触发的，启动瞬间也会先校正再运行，保证运行到正确的任务。其余 ok-* 应用（如 `\ok-gf2\`）的任务不会被改动。
+> **Index auto-correction at startup**: tasks created through ok-ef's built-in 「Scheduled Tasks」 feature (the 「Scheduled Tasks」 tab in the GUI) store their `-t` argument in `configs/schedule_tasks_cache.json` and in the Windows scheduled task. On every app startup, it reads this app's tasks (`\ok-ef\`) from the cache, compares each name against the current `onetime_tasks` order, automatically rewrites `-t` to the correct current index, and syncs the Windows scheduled task. So after reordering `onetime_tasks` you don't need to fix the number manually — the next startup corrects it automatically; if this run was triggered by the scheduled task, it also corrects before running, ensuring the right task runs. Other ok-* apps' tasks (e.g. `\ok-gf2\`) are not modified.
 
-使用 `Win + R` 运行 `taskschd.msc` 打开计划任务程序。点击 `操作 > 导入任务` 加入上述 xml 文件。修改 `名称` 后点击 `确认`。
+Use `Win + R` and run `taskschd.msc` to open the Task Scheduler. Click `Action > Import Task` to add the xml file above. Change the `Name` and click `OK`.
 
-（计划任务创建后不能重命名和移动，如果想要修改，可以右键任务删除后重新导入。上述 xml 文件导入后就不再需要，可以删除。）
+(After creation a scheduled task cannot be renamed or moved; to modify it, right-click the task, delete it, and re-import. The xml file above is no longer needed after import and can be deleted.)
 
-这样计划任务就创建好了。每天上午4点，计算机自动执行 ok-ef 。
+The scheduled task is now created. At 4:00 AM every day, the computer automatically runs ok-ef.
 
-### 3. 修改计划任务
+### 3. Modify the scheduled task
 
-#### 基础用法
+#### Basic usage
 
-使用 `Win + R` 运行 `taskschd.msc` 打开计划任务程序，右击上述计划任务。
+Use `Win + R` and run `taskschd.msc` to open the Task Scheduler, then right-click the scheduled task.
 
-- 点击 `运行` 可以手动执行计划任务。
-- 点击 `停止` 可以停止正在执行的计划任务。注意 ok-ef 是非阻塞运行，需要手动关闭。
-- 点击 `禁用` 可以禁止计划任务自动执行。
-- 点击 `启用` 可以允许计划任务自动执行。
-
-#### 修改执行时间和频率
-
-使用 `Win + R` 运行 `taskschd.msc` 打开计划任务程序，双击上述计划任务，进入详情页，切换到 `触发器` ，可以修改执行时间和频率。
-
-#### 在另一个计划任务结束后执行
-
-如果希望 ok-ef 在另一个计划任务（比如 ok-ww）结束后执行，而不是定时执行。可以使用 `自定义触发器` 。
-
-使用 `Win + R` 运行 `taskschd.msc` 打开计划任务程序，双击上述计划任务，进入详情页，切换到 `触发器` 。
-
-点击 `新建`，在 `开始任务` 选择 `发生时间时` 。点击 `自定义` 和 `新建事件选择器` 。
-
-在弹出的窗口中，切换到 `XML` 。勾选 `手动编辑查询`，在文本框中贴入：
-
-``` xml
-<QueryList>
-  <Query Id="0" Path="Microsoft-Windows-TaskScheduler/Operational">
-    <Select Path="Microsoft-Windows-TaskScheduler/Operational">*[System[(EventID=102)]] and *[EventData[Data[@Name='TaskName'] and (Data='PLACEHOLDER_TASK_PATH')]]</Select>
-  </Query>
-</QueryList>
-```
-
-将 `PLACEHOLDER_TASK_PATH` 替换成前序任务的路径（可以在对应计划任务的详情页 `常规` 中找到，是 `位置` 和 `名称` 用反斜杠拼接）。
-
-一路点击 `确定` 关闭所有弹出窗口。
+- Click `Run` to run the scheduled task manually.
+- Click `Stop` to stop a running scheduled task. Note that ok-ef runs non-blocking and must be closed manually.
