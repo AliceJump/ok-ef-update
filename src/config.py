@@ -5,7 +5,7 @@ from src.core.email_config import email_config_option
 from src.interaction.EfInteraction import EfInteraction
 from src.tasks.daily.finally_file import decode
 
-version = "v1.0.52"
+version = "v1.0.53"
 
 
 # 不需要修改version, Github Action打包会自动修改
