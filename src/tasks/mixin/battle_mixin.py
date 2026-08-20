@@ -32,8 +32,6 @@ from src.tasks.onetime.AutoCombatLogic import AutoCombatLogic
 from src.core.BaseEfTask import BaseEfTask
 from src.core.BattleConfig import (
     BATTLE_CONFIG_DESCRIPTION,
-    BATTLE_CONFIG_MODE_GLOBAL,
-    BATTLE_CONFIG_MODE_INDEPENDENT,
     BATTLE_CONFIG_MODE_KEY,
     BATTLE_CONFIG_NAME,
     BATTLE_CONFIG_TYPE,
@@ -44,6 +42,7 @@ from src.core.BattleConfig import (
     KEY_INSTANT_LINK,
     KEY_INSTANT_ULT,
 )
+from src.core.config_migration import legacy_battle_mode_to_bool
 from src.core.global_config_store import get_global_config
 
 
@@ -61,6 +60,14 @@ class BattleMixin(BaseEfTask):
         - 自动索敌
         - 战斗结束检测
     """
+
+    # 配置键迁移：旧「战斗配置」下拉框 → 新「使用独立配置」开关
+    config_key_migrations = {
+        "战斗配置": BATTLE_CONFIG_MODE_KEY,
+    }
+    config_value_migrations = {
+        BATTLE_CONFIG_MODE_KEY: legacy_battle_mode_to_bool,
+    }
 
     def __init__(self, *args, **kwargs):
         """初始化战斗状态变量"""
@@ -81,14 +88,12 @@ class BattleMixin(BaseEfTask):
             self.config_description = {}
         if not hasattr(self, "config_type") or self.config_type is None:
             self.config_type = {}
+        # 「使用独立配置」开关：勾选后展开显示当前任务的独立战斗配置项。
+        # 实时条件的 3 个内部数据 key（序列/立即释放开关）不单独展开为行——
+        # 它们由「启用实时条件」面板承载（KEY_COND_ENABLED 渲染为面板行，随开关显隐）
         battle_mode_type = {
-            "type": "drop_down",
-            "options": [BATTLE_CONFIG_MODE_GLOBAL, BATTLE_CONFIG_MODE_INDEPENDENT],
             "sub_configs": {
-                BATTLE_CONFIG_MODE_GLOBAL: [],
-                # 实时条件的 3 个内部数据 key（序列/立即释放开关）不单独展开为行——
-                # 它们由「启用实时条件」面板承载（KEY_COND_ENABLED 渲染为面板行，随模式显隐）
-                BATTLE_CONFIG_MODE_INDEPENDENT: [
+                True: [
                     key for key in DEFAULT_BATTLE_CONFIG
                     if key not in (KEY_COND_SEQUENCE, KEY_INSTANT_ULT, KEY_INSTANT_LINK)
                 ],
@@ -97,11 +102,11 @@ class BattleMixin(BaseEfTask):
 
         # 每个使用战斗能力的任务都可以选择自己的战斗参数来源。
         self.default_config.update({
-            BATTLE_CONFIG_MODE_KEY: BATTLE_CONFIG_MODE_GLOBAL,
+            BATTLE_CONFIG_MODE_KEY: False,
             **DEFAULT_BATTLE_CONFIG,
         })
         self.config_description.update(BATTLE_CONFIG_DESCRIPTION)
-        self.config_description[BATTLE_CONFIG_MODE_KEY] = "选择当前任务使用全局或独立战斗配置。"
+        self.config_description[BATTLE_CONFIG_MODE_KEY] = "勾选后使用当前任务的独立战斗配置，否则使用全局战斗配置。"
         self.config_type.update(BATTLE_CONFIG_TYPE)
         self.config_type[BATTLE_CONFIG_MODE_KEY] = battle_mode_type
 
@@ -110,12 +115,14 @@ class BattleMixin(BaseEfTask):
         raw_config_get = getattr(self, "_raw_cfg_get", None)
         if callable(raw_config_get):
             try:
-                mode = raw_config_get(BATTLE_CONFIG_MODE_KEY, BATTLE_CONFIG_MODE_GLOBAL)
+                raw_value = raw_config_get(BATTLE_CONFIG_MODE_KEY, False)
             except (TypeError, AttributeError):
-                mode = self.config.get(BATTLE_CONFIG_MODE_KEY, BATTLE_CONFIG_MODE_GLOBAL)
+                raw_value = self.config.get(BATTLE_CONFIG_MODE_KEY, False)
         else:
-            mode = self.config.get(BATTLE_CONFIG_MODE_KEY, BATTLE_CONFIG_MODE_GLOBAL)
-        if mode != BATTLE_CONFIG_MODE_INDEPENDENT:
+            raw_value = self.config.get(BATTLE_CONFIG_MODE_KEY, False)
+
+        use_independent = self._parse_use_independent(raw_value)
+        if not use_independent:
             return global_value
         if callable(raw_config_get):
             try:
@@ -123,6 +130,40 @@ class BattleMixin(BaseEfTask):
             except (TypeError, AttributeError):
                 pass
         return self.config.get(key, global_value)
+
+    def _parse_use_independent(self, value):
+        """解析「使用独立配置」值，支持布尔值、旧字符串格式和未识别值回退。
+
+        Args:
+            value: 配置值（可能是 bool、str 或其他类型）
+
+        Returns:
+            bool: True 表示使用独立配置，False 表示使用全局配置
+        """
+        # 已经是布尔值，直接返回
+        if isinstance(value, bool):
+            return value
+
+        # 处理字符串值（包括旧的下拉框格式和其他可能的字符串表示）
+        if isinstance(value, str):
+            # 旧下拉框格式："使用独立配置" / "使用全局配置"
+            if value == "使用独立配置":
+                return True
+            if value == "使用全局配置":
+                return False
+
+            # 其他常见字符串布尔表示
+            normalized = value.strip().lower()
+            if normalized in ("true", "1", "yes", "on"):
+                return True
+            if normalized in ("false", "0", "no", "off", ""):
+                return False
+
+        # 未识别的值：回退到默认值 False（使用全局配置）
+        # 记录日志以便排查
+        if value not in (None, False, ""):
+            self.log_debug(f"未识别的「使用独立配置」值: {value!r}，回退到 False（使用全局配置）")
+        return False
 
     def get_account_config_base_value(self, key: str, default=None):
         return dict.get(self.config, key, default)

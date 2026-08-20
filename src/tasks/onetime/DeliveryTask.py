@@ -136,6 +136,10 @@ class DeliveryTask(AccountMixin, ZipLineMixin, MapMixin):
         self.config_type[self.CFG_TEST_TARGET] = {
             "type": "drop_down",
             "options": [self.TEST_NONE] + self.to_delivery_point_config_keys + self.ends + [self.TEST_FULL_CYCLE],
+            "sub_configs": {
+                self.TEST_NONE: [self.CFG_ONLY_ACCEPT, self.CFG_ONLY_DELIVER],
+                self.TEST_FULL_CYCLE: [self.CFG_FULL_CYCLE_LOCATION],
+            },
         }
         self.config_type[self.CFG_DELIVERY_AREA] = {
             "type": "drop_down",
@@ -461,10 +465,7 @@ class DeliveryTask(AccountMixin, ZipLineMixin, MapMixin):
             self.log_info("未找到‘运送委托列表’，退出")
             return False
         self.wait_ui_stable(refresh_interval=1)
-        enable_delivery_area = True
-        ticket_types = []
-        if enable_delivery_area:
-            ticket_types.append("ticket_delivery_area")
+        ticket_types = ["ticket_delivery_area"]
 
         if not ticket_types:
             self.log_info("警告: 未启用任何券种，任务退出")
