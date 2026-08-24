@@ -6,11 +6,12 @@ from functools import partial
 from typing import List
 
 import cv2
+import imagehash
 import numpy as np
 import win32gui
+from PIL import Image
 from ok import Box
-
-from src.image.stability import hamming_distance, perceptual_hash, ssim_score
+from skimage.metrics import structural_similarity as ssim
 
 from src.config import config as app_config
 from src.data.FeatureList import FeatureList as fL
@@ -846,10 +847,13 @@ class RuntimeMixin:
             current_frame = parse_box(self.next_frame(), box)
 
             if method in ("phash", "dhash"):
-                h1 = perceptual_hash(last_frame, method)
-                h2 = perceptual_hash(current_frame, method)
+                img1 = Image.fromarray(last_frame)
+                img2 = Image.fromarray(current_frame)
 
-                is_stable = hamming_distance(h1, h2) <= threshold
+                h1 = imagehash.phash(img1) if method == "phash" else imagehash.dhash(img1)
+                h2 = imagehash.phash(img2) if method == "phash" else imagehash.dhash(img2)
+
+                is_stable = (h1 - h2) <= threshold
 
             elif method == "pixel":
                 if last_frame.shape != current_frame.shape:
@@ -865,7 +869,7 @@ class RuntimeMixin:
                 if last_gray.shape != current_gray.shape:
                     is_stable = False
                 else:
-                    score = ssim_score(last_gray, current_gray)
+                    score, _ = ssim(last_gray, current_gray, full=True)
                     is_stable = score >= threshold
 
             else:
