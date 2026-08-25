@@ -19,6 +19,8 @@ class TakeDeliveryTask(BaseEfTask, TriggerTask):
     - `min_reward`: 最低报酬金额（万）。
     """
 
+    requires_foreground = True  # 接取送货需要导航/移动
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = "接取委托"
@@ -294,8 +296,6 @@ class TakeDeliveryTask(BaseEfTask, TriggerTask):
 
                     # 3. 滚动次数已满，准备刷新
                     self.log_debug("已完成当前列表扫描，准备检测刷新")
-
-                    refresh_not_found_count = 0  # 重置计数
 
                     if last_refresh_box:
 

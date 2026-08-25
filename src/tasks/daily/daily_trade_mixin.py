@@ -59,7 +59,7 @@ class DailyTradeFeature:
     def __getattr__(self, name):
         return getattr(self._task, name)
 
-    def collect_market_goods_info(self):
+    def collect_market_goods_info(self, buy_only=False):
         def ocr_stock_quantity() -> int:
             stock_piece = self.ocr(
                 match=_DIGITS_ONLY_RE,
@@ -82,7 +82,7 @@ class DailyTradeFeature:
         # =========================
         # ✅ 只买模式：直接OCR扫描
         # =========================
-        if self.config.get("只买不卖", False):
+        if buy_only:
             results = self.ocr(
                 match=re.compile(r"\d+"),
                 box=self.box_of_screen(0, market_text_y / self.height, 1, 1),
@@ -301,6 +301,7 @@ class DailyTradeFeature:
         return result
 
     def buy_sell(self, target_areas=None, keep_area_context=False, after_buy=None):
+        navigation_failed = False
         for area in target_areas or areas_list:
             if not self.config.get(area, False):
                 self.log_info(f"跳过{area}，因为配置中未启用")
@@ -309,6 +310,8 @@ class DailyTradeFeature:
                 self.ensure_main()
             if not self.to_model_area(area, "物资调度"):
                 self.log_info(f"无法进入{area}物资调度，买卖货失败")
+                navigation_failed = True
+                continue
             self.wait_click_ocr(
                 match=self.lang.daily_trade_mixin.k_33fb3f9c, box=self.box.top
             )
@@ -321,13 +324,19 @@ class DailyTradeFeature:
                 self.log_info("未找到货物")
                 continue
             self.click(result)
-            good_infos, _ = self.collect_market_goods_info()
+            buy_only = self.config.get("只买不卖", False)
+            if self.input_mode() == "background":
+                if not buy_only:
+                    self.log_info("后台模式下强制只买不卖，跳过卖出")
+                buy_only = True
+            # 价格校验在采集前：buy_only 时不需要卖出价
             buy_price = self.config.get(f"{area}买入价", 0)
             sell_price = self.config.get(f"{area}卖出价", 0)
-            if not (buy_price and sell_price):
-                self.log_info("未找到买入价或卖出价")
+            if not buy_price or (not buy_only and not sell_price):
+                self.log_info("未找到所需价格配置")
                 continue
-            if self.config.get("只买不卖", False):
+            good_infos, _ = self.collect_market_goods_info(buy_only=buy_only)
+            if buy_only:
                 buy_good = good_infos
                 sell_goods = []
                 can_buy = buy_good and (buy_good.good_price < buy_price)
@@ -377,6 +386,7 @@ class DailyTradeFeature:
                                 break
                     else:
                         self.log_info("未找到加号按钮，无法购买")
+                        self.back()
 
             if after_buy is not None:
                 after_buy(area)
@@ -450,4 +460,4 @@ class DailyTradeFeature:
                 else:
                     self.log_info("未找到加号按钮，无法出售")
 
-        return True
+        return not navigation_failed
