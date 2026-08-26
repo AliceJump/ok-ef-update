@@ -110,7 +110,7 @@ class LiaisonMixin(NavigationMixin):
 
         # 查找传送点
         tp_icon = self.find_feature(
-            feature="transfer_point",
+            feature=fL.transfer_point,
             box=box,
             threshold=0.7
         )
@@ -206,7 +206,7 @@ class LiaisonMixin(NavigationMixin):
             在导航过程中检测是否出现干员交互图标
             """
 
-            chat_box = self.find_feature("chat_icon_dark") or self.find_feature("chat_icon_2")
+            chat_box = self.find_feature(fL.chat_icon_dark) or self.find_feature(fL.chat_icon_2)
 
             if chat_box:
                 self.send_key_up("w")  # 确认使用send_key：释放方向键（W为移动键，不属于可配置热键）
@@ -539,7 +539,7 @@ class LiaisonMixin(NavigationMixin):
         """
         self.log_info("开始收取或赠送礼物")
         start_time = self.active_time()
-        while self.find_one(feature=fL.esc, vertical_variance=0.01, horizontal_variance=0.02):
+        while self.find_one(fL.esc, vertical_variance=0.01, horizontal_variance=0.02):
             if self.active_time() - start_time > 5:
                 self.log_info("没能进入交流界面")
                 return False
