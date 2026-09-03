@@ -9,21 +9,23 @@
 string 节点 -> str（运行时按当前 UI 语言取值，docstring 显示基准值）；
 pattern 节点 -> re.Pattern[str]（docstring 显示文本）。
 """
+
 import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from . import LangModule as _LangModuleBase
+
     _LangModuleBaseT = _LangModuleBase
 else:
     _LangModuleBaseT = object
+
 
 class AutoSkipDialogTaskModule(_LangModuleBaseT):
     """AutoSkipDialogTask — OCR 语言节点（值取自 zh_CN）"""
 
     k_92399078: str
     """结束会话"""
-
 
 
 class CharactersModule(_LangModuleBaseT):
@@ -120,7 +122,6 @@ class CharactersModule(_LangModuleBaseT):
     """梨诺"""
 
 
-
 class DailyBattleMixinModule(_LangModuleBaseT):
     """daily_battle_mixin — OCR 语言节点（值取自 zh_CN）"""
 
@@ -209,7 +210,6 @@ class DailyBattleMixinModule(_LangModuleBaseT):
     """奖励选择"""
 
 
-
 class DailyBuyMixinModule(_LangModuleBaseT):
     """daily_buy_mixin — OCR 语言节点（值取自 zh_CN）"""
 
@@ -221,7 +221,6 @@ class DailyBuyMixinModule(_LangModuleBaseT):
 
     stable_materials_tab: re.Pattern[str]
     """稳定"""
-
 
 
 class DailyDemoMixinModule(_LangModuleBaseT):
@@ -240,7 +239,6 @@ class DailyDemoMixinModule(_LangModuleBaseT):
     """存放"""
 
 
-
 class DailyLiaisonMixinModule(_LangModuleBaseT):
     """daily_liaison_mixin — OCR 语言节点（值取自 zh_CN）"""
 
@@ -252,7 +250,6 @@ class DailyLiaisonMixinModule(_LangModuleBaseT):
 
     k_d661f6da: re.Pattern[str]
     """存放"""
-
 
 
 class DailyRoutineMixinModule(_LangModuleBaseT):
@@ -442,7 +439,6 @@ class DailyRoutineMixinModule(_LangModuleBaseT):
     """查看报价"""
 
 
-
 class DailyShopMixinModule(_LangModuleBaseT):
     """daily_shop_mixin — OCR 语言节点（值取自 zh_CN）"""
 
@@ -463,7 +459,6 @@ class DailyShopMixinModule(_LangModuleBaseT):
 
     k_b52d6a2a: re.Pattern[str]
     """采购"""
-
 
 
 class DailyTradeMixinModule(_LangModuleBaseT):
@@ -510,7 +505,6 @@ class DailyTradeMixinModule(_LangModuleBaseT):
 
     k_02894ea7: str
     """物资调度"""
-
 
 
 class DeliveryTaskModule(_LangModuleBaseT):
@@ -562,7 +556,6 @@ class DeliveryTaskModule(_LangModuleBaseT):
     """不易损"""
 
 
-
 class GameFlowMixinModule(_LangModuleBaseT):
     """game_flow_mixin — OCR 语言节点（值取自 zh_CN）"""
 
@@ -594,7 +587,6 @@ class GameFlowMixinModule(_LangModuleBaseT):
     """离开"""
 
 
-
 class LiaisonMixinModule(_LangModuleBaseT):
     """liaison_mixin — OCR 语言节点（值取自 zh_CN）"""
 
@@ -620,7 +612,6 @@ class LiaisonMixinModule(_LangModuleBaseT):
     """赠送"""
 
 
-
 class LoginMixinModule(_LangModuleBaseT):
     """login_mixin — OCR 语言节点（值取自 zh_CN）"""
 
@@ -634,7 +625,6 @@ class LoginMixinModule(_LangModuleBaseT):
     """最近"""
 
 
-
 class MapMixinModule(_LangModuleBaseT):
     """map_mixin — OCR 语言节点（值取自 zh_CN）"""
 
@@ -645,13 +635,11 @@ class MapMixinModule(_LangModuleBaseT):
     """清空选中"""
 
 
-
 class NavigationMixinModule(_LangModuleBaseT):
     """navigation_mixin — OCR 语言节点（值取自 zh_CN）"""
 
     k_8967d3c6: re.Pattern[str]
     """追踪"""
-
 
 
 class TakeDeliveryTaskModule(_LangModuleBaseT):
@@ -665,7 +653,6 @@ class TakeDeliveryTaskModule(_LangModuleBaseT):
 
     k_ae8fb114: str
     """运送委托列表"""
-
 
 
 class WarehouseTransferTaskModule(_LangModuleBaseT):
@@ -682,7 +669,6 @@ class WarehouseTransferTaskModule(_LangModuleBaseT):
 
     k_b56d9ac6: re.Pattern[str]
     """确认"""
-
 
 
 class WorldMapModule(_LangModuleBaseT):
@@ -962,7 +948,6 @@ class WorldMapModule(_LangModuleBaseT):
     """盈天台建设站"""
 
 
-
 class ZipLineMixinModule(_LangModuleBaseT):
     """zip_line_mixin — OCR 语言节点（值取自 zh_CN）"""
 
@@ -979,10 +964,9 @@ class ZipLineMixinModule(_LangModuleBaseT):
     """离开滑索架"""
 
 
-
-
 class _LangAccessorTyped:
     """self.lang 的类型化声明（仅类型提示，运行时由 __getattr__ 动态加载）"""
+
     AutoSkipDialogTask: AutoSkipDialogTaskModule
     characters: CharactersModule
     daily_battle_mixin: DailyBattleMixinModule

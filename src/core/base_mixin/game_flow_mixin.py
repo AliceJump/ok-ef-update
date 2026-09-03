@@ -162,7 +162,6 @@ class GameFlowMixin:
     def wait_pop_up(self, time_out=15, after_sleep=0):
         """
         等待奖励弹窗出现并点击 OK 按钮。
-        使用 click_feature 持续点击直到弹窗消失。
 
         Args:
             time_out: 总超时时间。
@@ -171,23 +170,25 @@ class GameFlowMixin:
         Returns:
             bool: 找到并点击返回 True，超时返回 False。
         """
-        clicked = self.click_feature(
-            fL.reward_ok,
-            boxes=[self.box.bottom],
-            time_out=time_out,
-            after_sleep=after_sleep,
-        )
-        if clicked:
-            return True
-        result = self.wait_ocr(
-            match=self.lang.game_flow_mixin.k_8b2ca27a,
-            time_out=1,
-            box=self.box.bottom,
-        )
-        if result:
-            self.click(result, after_sleep=after_sleep)
-            return True
-        return False
+        count = 0
+        start_time = self.active_time()
+        while True:
+            if self.active_time() - start_time > time_out:
+                return False
+            if count >= 30:
+                return False
+            result = self.find_one(
+                feature=fL.reward_ok, box=self.box.bottom, threshold=0.8
+            )
+            if not result:
+                remaining = max(0.1, time_out - (self.active_time() - start_time))
+                result = self.wait_ocr(match=self.lang.game_flow_mixin.k_8b2ca27a, time_out=min(1, remaining), box=self.box.bottom)
+            if result:
+                if self.active_time() - start_time > time_out:
+                    return False
+                self.click(result, after_sleep=after_sleep)
+                return True
+            count += 1
 
     def wait_login(self):
         """
@@ -334,7 +335,7 @@ class GameFlowMixin:
         Returns:
             bool: 当前处于游戏世界返回 True。
         """
-        main_world_features = [fL.esc]
+        main_world_features = [fL.task_icon]
 
         in_world = all(self.find_one(f, vertical_variance=0.01, horizontal_variance=0.02) for f in main_world_features)
 
@@ -370,7 +371,7 @@ class GameFlowMixin:
         #     self.log_info("检测到对话跳过图标，按 ESC 退出对话")
         #     self.press_esc()
         #     self._next_main_recovery_time = self.active_time() + self.once_sleep_time
-        #     return False                                                                                                        
+        #     return False
 
         # 某些弹窗状态不视为主界面
         if result := (
@@ -543,7 +544,7 @@ class GameFlowMixin:
             "仓储节点": fL.warehouse_node_enter,
             "据点管理": fL.outpost_manager_enter,
         }
-        
+
         if box := self.wait_feature(
             feature=models.get(model),
             box=self.box.right,

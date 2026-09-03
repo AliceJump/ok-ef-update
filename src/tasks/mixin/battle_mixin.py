@@ -18,38 +18,70 @@ BattleMixin
     numpy
 """
 
+import json
 import re
+from pathlib import Path
 
 import cv2
 import numpy as np
 from ok import Box
 
-from src.data.FeatureList import FeatureList as fL
-from src.data.world_map import STAGE_CATEGORY_ENERGY_POOLING
-from src.data.world_map_utils import is_world_map_text
-from src.core.sequence_parser import parse_sequence
-from src.tasks.onetime.AutoCombatLogic import AutoCombatLogic
 from src.core.BaseEfTask import BaseEfTask
 from src.core.BattleConfig import (
     BATTLE_CONFIG_DESCRIPTION,
     BATTLE_CONFIG_MODE_KEY,
     BATTLE_CONFIG_NAME,
     BATTLE_CONFIG_TYPE,
-    BattleConfigManager,
+    BATTLE_GROUP_CONFIGS,
     DEFAULT_BATTLE_CONFIG,
-    KEY_COND_ENABLED,
-    KEY_COND_SEQUENCE,
-    KEY_INSTANT_LINK,
-    KEY_INSTANT_ULT,
     KEY_RECOMMEND_SKILL,
+    KEY_SKILL_ALLOWLIST,
     KEY_ULT_RELEASE_MODE,
     RECOMMEND_SKILL_REGIONS,
     ULT_RELEASE_MODE_ALT,
     ULT_RELEASE_MODE_HOLD,
+    BattleConfigManager,
 )
 from src.core.config_migration import legacy_battle_mode_to_bool
 from src.core.global_config_store import get_global_config
+from src.core.sequence_parser import parse_sequence
+from src.data.FeatureList import FeatureList as fL
 from src.image.recommend_skill_detector import get_recommend_skill_detector
+from src.tasks.onetime.AutoCombatLogic import AutoCombatLogic
+
+# ── 编队识别：模块级常量与工具函数 ─────────────────────────────────────────
+
+_ROOT = Path(__file__).resolve().parents[3]
+_CHARACTERS_JSON = _ROOT / "assets" / "data" / "characters.json"
+
+_char_name_map: dict[str, str] | None = None   # en → zh
+
+# 模板别名：变体 annotation 名 → 主模板名
+# 同角色有多个 battle_icon 外观时，在此声明归并关系，
+# 框架 feature_set 中仍保持独立条目。
+_TEMPLATE_ALIASES: dict[str, str] = {
+    "battle_icon_endministrator_female": "battle_icon_endministrator",
+    "battle_icon_endministrator_male": "battle_icon_endministrator",
+}
+
+
+def _load_char_name_map() -> dict[str, str]:
+    """加载 characters.json，返回 en→zh 映射（如 ember→余烬）。"""
+    global _char_name_map
+    if _char_name_map is not None:
+        return _char_name_map
+    if not _CHARACTERS_JSON.exists():
+        _char_name_map = {}
+        return _char_name_map
+    with open(_CHARACTERS_JSON, encoding="utf-8") as f:
+        data = json.load(f)
+    _char_name_map = {}
+    for info in data.values():
+        en = info.get("en", "")
+        zh = info.get("zh", "")
+        if en and zh:
+            _char_name_map[en] = zh
+    return _char_name_map
 
 
 class BattleMixin(BaseEfTask):
@@ -82,6 +114,7 @@ class BattleMixin(BaseEfTask):
         self.last_no_number_action_time = 0
         self.exit_check_count = 0
         self._battle_member_count = 0
+        self._last_ult_release_time = 0
         self.battle_config_manager = BattleConfigManager(get_global_config(BATTLE_CONFIG_NAME))
         self._register_battle_config()
         # 用于识别 LV 或等级文字
@@ -97,11 +130,12 @@ class BattleMixin(BaseEfTask):
         # 「使用独立配置」开关：勾选后展开显示当前任务的独立战斗配置项。
         # 实时条件的 3 个内部数据 key（序列/立即释放开关）不单独展开为行——
         # 它们由「启用实时条件」面板承载（KEY_COND_ENABLED 渲染为面板行，随开关显隐）
+        # KEY_INSTANT_ULT / KEY_INSTANT_LINK 已从 DEFAULT_BATTLE_CONFIG 移除，无需再排除
         battle_mode_type = {
             "sub_configs": {
                 True: [
                     key for key in DEFAULT_BATTLE_CONFIG
-                    if key not in (KEY_COND_SEQUENCE, KEY_INSTANT_ULT, KEY_INSTANT_LINK)
+                    if key not in BATTLE_GROUP_CONFIGS[KEY_SKILL_ALLOWLIST]
                 ],
             },
         }
@@ -212,6 +246,9 @@ class BattleMixin(BaseEfTask):
 
         return sequence if sequence else ["1", "2", "3"]
 
+    # 终结技释放后延迟退出检查的时间（秒）
+    ULT_EXIT_DELAY = 3.0
+
     def use_ult(self, ult_sequence: str = None):
         """
         尝试释放终极技。
@@ -233,22 +270,315 @@ class BattleMixin(BaseEfTask):
 
         for ult in ults:
             if self._find_battle_ult("ult_" + ult):
+                self.log_info(f"检测到终极技 ult_{ult}，尝试释放（模式: {release_mode}）")
                 if release_mode == ULT_RELEASE_MODE_ALT:
                     # Alt + 技能按键：按住 Alt 的同时点按技能键释放终结技
                     self.send_key_down("alt")
                     self.send_key(ult)  # 确认使用send_key：终极技键位为游戏固定不可配置键，不经过KeyConfigManager管理
                     self.send_key_up("alt")
-                    # 等待技能释放导致战斗状态变化
+                    # 从实际完成按键操作的时刻开始计算退出延迟
+                    self._last_ult_release_time = self.active_time()
+                    # 等待技能释放导致战斗状态变化，然后等待重新识别到至少一个人
                     self.wait_until(lambda: not self.in_combat(), time_out=1)
-                    self.wait_until(lambda: self.in_team(), time_out=3)
+                    self._has_detected_team_member()
                     return True
                 self.send_key_down(ult)  # 确认使用send_key：终极技键位为游戏固定不可配置键，不经过KeyConfigManager管理
                 # 等待技能释放导致战斗状态变化
                 self.wait_until(lambda: not self.in_combat(), time_out=1)
                 self.send_key_up(ult)  # 确认使用send_key：终极技键位为游戏固定不可配置键，释放按键
-                self.wait_until(lambda: self.in_team(), time_out=3)
+                # 从实际完成按键操作的时刻开始计算退出延迟
+                self._last_ult_release_time = self.active_time()
+                # wait_until 每轮会刷新 self.frame，再重新识别当前编队
+                self._has_detected_team_member()
                 return True
 
+        return False
+
+    # ── 编队头像识别 ────────────────────────────────────────────────────────
+
+    # 归一化距离阈值：同一槽位人工框选偏差的允许范围。
+    # 相邻战斗槽位中心距约 116px / 1920 ≈ 0.06，阈值取 0.025
+    # 确保同一槽位的微小偏差能合并，相邻槽位不会被错误合并。
+    BATTLE_ICON_GROUP_DISTANCE_THRESHOLD = 0.025
+
+    @staticmethod
+    def _union_find_cluster(n, pairs):
+        """并查集聚类。
+
+        Args:
+            n: 元素总数
+            pairs: 可合并的元素对列表 [(i, j), ...]
+
+        Returns:
+            各元素所属连通分量的根节点列表
+        """
+        parent = list(range(n))
+
+        def find(i):
+            while parent[i] != i:
+                parent[i] = parent[parent[i]]
+                i = parent[i]
+            return i
+
+        def union(i, j):
+            ri, rj = find(i), find(j)
+            if ri != rj:
+                parent[ri] = rj
+
+        for i, j in pairs:
+            union(i, j)
+
+        return [find(i) for i in range(n)]
+
+    def _build_search_boxes(self, boxes, frame_width, frame_height):
+        """将所有 battle_icon bbox 按中心距离聚类，为每个簇生成外接搜索框。
+
+        全程使用归一化坐标进行距离判断，最终转回像素坐标生成 Box。
+
+        Args:
+            boxes: 原始 Box 列表（像素坐标）
+            frame_width: 帧宽度
+            frame_height: 帧高度
+
+        Returns:
+            聚类后的搜索 Box 列表（像素坐标）
+        """
+        if not boxes:
+            return []
+
+        # 计算归一化中心点
+        centers = []
+        for b in boxes:
+            cx = (b.x + b.width / 2) / frame_width
+            cy = (b.y + b.height / 2) / frame_height
+            centers.append((cx, cy))
+
+        # 找出所有中心距离 < 阈值的配对
+        threshold = self.BATTLE_ICON_GROUP_DISTANCE_THRESHOLD
+        pairs = []
+        for i in range(len(boxes)):
+            for j in range(i + 1, len(boxes)):
+                dx = centers[i][0] - centers[j][0]
+                dy = centers[i][1] - centers[j][1]
+                if (dx * dx + dy * dy) ** 0.5 < threshold:
+                    pairs.append((i, j))
+
+        # 并查集聚类
+        roots = self._union_find_cluster(len(boxes), pairs)
+
+        # 按簇分组
+        groups: dict[int, list] = {}
+        for i, root in enumerate(roots):
+            groups.setdefault(root, []).append(i)
+
+        # 每个簇生成外接矩形（归一化坐标）
+        search_boxes = []
+        for indices in groups.values():
+            nxs = [(boxes[i].x / frame_width) for i in indices]
+            nys = [(boxes[i].y / frame_height) for i in indices]
+            nxe = [((boxes[i].x + boxes[i].width) / frame_width) for i in indices]
+            nye = [((boxes[i].y + boxes[i].height) / frame_height) for i in indices]
+
+            x1 = min(nxs) * frame_width
+            y1 = min(nys) * frame_height
+            x2 = max(nxe) * frame_width
+            y2 = max(nye) * frame_height
+            search_boxes.append(Box(
+                int(x1), int(y1),
+                int(x2 - x1), int(y2 - y1),
+                name=f"battle_slot_{len(search_boxes)}",
+            ))
+
+        return search_boxes
+
+    def _collect_team_candidate_boxes(self) -> tuple[list[Box], list[str]]:
+        """收集有效的战斗头像候选框及对应模板名。"""
+        raw_boxes = []
+        valid_features = []
+        for f in fL:
+            feature_name = f.value
+            if not feature_name.startswith("battle_icon_"):
+                continue
+            try:
+                box = self.get_box_by_name(feature_name)
+            except (ValueError, AttributeError):
+                continue
+            if box is not None:
+                raw_boxes.append(box)
+                valid_features.append(feature_name)
+
+        return raw_boxes, valid_features
+
+    def _match_team_slots(self, frame, search_boxes, valid_features) -> list[tuple[int, str, float]]:
+        """为每个槽位匹配最高分且未被其他槽位使用的角色模板。"""
+        matches = []
+        used_features: set[str] = set()
+        for slot_idx, slot_box in enumerate(search_boxes[:4]):
+            best_score = 0.0
+            best_feature = None
+            for feature_name in valid_features:
+                if feature_name in used_features:
+                    continue
+                try:
+                    result = self.find_one(feature_name, box=slot_box, frame=frame)
+                except Exception:
+                    continue
+                if result is not None and result.confidence > best_score:
+                    best_score = result.confidence
+                    best_feature = feature_name
+            if best_feature is not None:
+                matches.append((slot_idx, best_feature, best_score))
+                used_features.add(best_feature)
+
+        return matches
+
+    def _detect_team_core(self, frame=None) -> list[tuple[str, float, str]]:
+        """编队识别核心逻辑：返回四个槽位的 (en_name, score, feature_name)。"""
+        if frame is None:
+            frame = self.frame
+
+        slot_results: list[tuple[str, float, str]] = [("?", 0.0, "") for _ in range(4)]
+
+        raw_boxes, valid_features = self._collect_team_candidate_boxes()
+        if not raw_boxes:
+            return slot_results
+
+        fh, fw = frame.shape[:2]
+        search_boxes = self._build_search_boxes(raw_boxes, frame_width=fw, frame_height=fh)
+        search_boxes.sort(key=lambda b: b.x)
+
+        if not search_boxes:
+            return slot_results
+
+        for slot_idx, feature_name, score in self._match_team_slots(frame, search_boxes, valid_features):
+            en_name = _TEMPLATE_ALIASES.get(feature_name, feature_name)
+            en_name = en_name.replace("battle_icon_", "")
+            slot_results[slot_idx] = (en_name, score, feature_name)
+
+        return slot_results
+
+    def detect_team(self, frame=None) -> list[str]:
+        """从战斗帧识别当前队伍角色名（中文）。
+
+        槽位按 x 排序，未匹配到的槽位标记为 "?"。
+        例: ["伊冯", "洁尔佩塔", "?", "余烬"] 表示第3位角色未识别。
+
+        Args:
+            frame: BGR numpy 帧（可选，默认使用 self.frame）
+
+        Returns:
+            角色名列表
+        """
+        slot_results = self._detect_team_core(frame)
+        name_map = _load_char_name_map()
+
+        return [name_map.get(en_name, en_name) for en_name, _, _ in slot_results]
+
+    def detect_team_with_scores(self, frame=None) -> list[tuple[str, float]]:
+        """同 detect_team，但同时返回匹配备分数（调试用）。"""
+        slot_results = self._detect_team_core(frame)
+        name_map = _load_char_name_map()
+
+        return [(name_map.get(en, en), score) for en, score, _ in slot_results]
+
+    def detect_team_stable(
+        self,
+        max_attempts: int = 6,
+        interval: float = 0.2,
+        confidence: int = 2,
+        deadline: float | None = None,
+    ) -> tuple[list[str], bool]:
+        """多帧稳定识别：连续 confidence 次识别出相同队伍才视为稳定。
+
+        用于战斗开始前的稳定检测，避免单帧误识别。
+
+        Args:
+            max_attempts:  最大采样次数
+            interval:      每次采样间隔秒数
+            confidence:    连续多少次相同结果视为稳定
+            deadline:      可选截止时间戳（同 self.active_time() 单位），超时立即停止
+
+        Returns:
+            (team, stable) 二元组
+        """
+        last_result: list[str] = []
+        streak = 0
+
+        for i in range(max_attempts):
+            if deadline is not None and self.active_time() >= deadline:
+                break
+
+            frame = self.next_frame()
+            if frame is None or (hasattr(frame, 'size') and frame.size == 0):
+                self.sleep(min(interval, max(0, (deadline or self.active_time() + interval) - self.active_time())))
+                continue
+
+            current = self.detect_team(frame)
+            if current == ["?", "?", "?", "?"]:
+                last_result = []
+                streak = 0
+            else:
+                if current == last_result:
+                    streak += 1
+                    if streak >= confidence:
+                        return (current, True)
+                else:
+                    last_result = current
+                    streak = 1
+                    if streak >= confidence:
+                        return (current, True)
+
+            if i < max_attempts - 1:
+                if deadline is not None:
+                    remaining = deadline - self.active_time()
+                    if remaining <= 0:
+                        break
+                    self.sleep(min(interval, remaining))
+                else:
+                    self.sleep(interval)
+
+        return (last_result or ["?"], False)
+
+    def _has_detected_team_member(self, time_out=3):
+        """在指定时间内等待当前队伍恢复为战斗开始时的完整队伍。
+
+        连续两帧识别到与战斗开始时相同的完整队伍时返回 True。
+        超时返回 False。
+        """
+        battle_team = getattr(self, "_battle_team", None)
+        if not battle_team:
+            return False
+
+        start_time = self.active_time()
+        matched_count = 0
+
+        while self.active_time() - start_time < time_out:
+            frame = self.next_frame()
+
+            if frame is None or frame.size == 0:
+                matched_count = 0
+                continue
+
+            team = self.detect_team(frame)
+            self.log_info(f"当前队伍角色: {team}")
+
+            if (
+                team
+                and not any(member == "?" for member in team)
+                and team == battle_team
+            ):
+                matched_count += 1
+
+                if matched_count >= 2:
+                    self.log_info(f"队伍恢复确认: {team}")
+                    return True
+            else:
+                matched_count = 0
+
+        self.log_info(
+            f"等待队伍恢复超时（{time_out:.1f}秒），"
+            f"目标队伍: {battle_team}"
+        )
         return False
 
     def use_link_skill(self):
@@ -271,7 +601,7 @@ class BattleMixin(BaseEfTask):
         Returns:
             bool: 本帧是否因推荐技能命中而按下了按键。
         """
-        if not self.get_battle_config(KEY_RECOMMEND_SKILL, False):
+        if not self.get_battle_config(KEY_RECOMMEND_SKILL, False) and not self.get_battle_config(KEY_SKILL_ALLOWLIST, False):
             return False
         member_count = int(self._battle_member_count or 0)
         if not 1 <= member_count <= len(RECOMMEND_SKILL_REGIONS):
@@ -522,6 +852,18 @@ class BattleMixin(BaseEfTask):
             self.log_info("退出检查通过: 检测到结算模板 fL.b")
             return True
 
+        # 终结技释放后延迟退出检查：终结技动画期间 in_team 会返回 False，
+        # 需要等待动画结束、技能图标重新出现后再做退出判定。
+        last_ult_time = getattr(self, '_last_ult_release_time', 0)
+        if last_ult_time > 0:
+            elapsed = self.active_time() - last_ult_time
+            if elapsed < self.ULT_EXIT_DELAY:
+                self.log_debug(
+                    f"终结技释放后延迟退出检查（已过 {elapsed:.1f}s，"
+                    f"需等待 {self.ULT_EXIT_DELAY:.1f}s）"
+                )
+                return False
+
         # UI状态检测
         has_lv = self.ocr_lv()
         in_team = self.in_team()
@@ -701,7 +1043,7 @@ class BattleMixin(BaseEfTask):
             else:
                 consecutive_matches = 0
         return False
-    
+
     def is_battle_settlement(self) -> bool:
         """
         判断是否进入战斗结算状态
@@ -717,7 +1059,7 @@ class BattleMixin(BaseEfTask):
                 box=self.box_of_screen(0.550, 0.896, 0.574, 0.943)
             ),
         ))
-    
+
     def auto_battle(self, no_battle: bool = False):
         """
         自动战斗主循环

@@ -1,26 +1,40 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QSize, Qt, Signal
-from PySide6.QtWidgets import (
-    QAbstractItemView, QDialog, QDoubleSpinBox, QFrame, QGraphicsOpacityEffect,
-    QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QListView,
-    QVBoxLayout, QWidget,
-)
-from qfluentwidgets import (
-    Action, ComboBox, FluentIcon, IndicatorPosition,
-    MessageBox, MessageBoxBase, PushButton, RoundMenu, SpinBox,
-    SubtitleLabel, SwitchButton, TransparentToolButton,
-)
 from ok import og
 from ok.gui.tasks.LabelAndWidget import LabelAndWidget
+from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QSize, Qt, Signal
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QDialog,
+    QDoubleSpinBox,
+    QFrame,
+    QGraphicsOpacityEffect,
+    QHBoxLayout,
+    QLabel,
+    QListView,
+    QListWidget,
+    QListWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
+from qfluentwidgets import (
+    Action,
+    ComboBox,
+    FluentIcon,
+    IndicatorPosition,
+    MessageBox,
+    MessageBoxBase,
+    PushButton,
+    RoundMenu,
+    SpinBox,
+    SubtitleLabel,
+    SwitchButton,
+    TransparentToolButton,
+)
 
 from src.core.BattleConfig import (
-    BATTLE_CONFIG_DESCRIPTION,
     BATTLE_CONFIG_NAME,
-    KEY_COND_ENABLED,
     KEY_COND_SEQUENCE,
-    KEY_INSTANT_LINK,
-    KEY_INSTANT_ULT,
 )
 from src.core.global_config_store import get_global_config
 from src.core.rotation_ast import normalize_ast
@@ -32,12 +46,21 @@ def _tr(text: str) -> str:
 
 # 友好名映射
 _ACTION_DISPLAY = {
-    "1": "战技 1", "2": "战技 2", "3": "战技 3", "4": "战技 4", "e": "连携技",
-    "ult_1": "终结技 1", "ult_2": "终结技 2", "ult_3": "终结技 3", "ult_4": "终结技 4",
+    "1": "战技 1",
+    "2": "战技 2",
+    "3": "战技 3",
+    "4": "战技 4",
+    "e": "连携技",
+    "ult_1": "终结技 1",
+    "ult_2": "终结技 2",
+    "ult_3": "终结技 3",
+    "ult_4": "终结技 4",
 }
 _ATOM_DISPLAY = {
-    "ult1": "终结技 1 可用", "ult2": "终结技 2 可用",
-    "ult3": "终结技 3 可用", "ult4": "终结技 4 可用",
+    "ult1": "终结技 1 可用",
+    "ult2": "终结技 2 可用",
+    "ult3": "终结技 3 可用",
+    "ult4": "终结技 4 可用",
     "link": "连携技可用",
 }
 
@@ -48,9 +71,11 @@ _SLEEP_KEY = "__sleep__"
 _NORMAL_KEY = "__normal__"
 
 _ACTION_OPTIONS = [  # (key, 显示名)
-    (_SKILL_ACTION_KEY, "战技 N"), ("e", "连携技"),
+    (_SKILL_ACTION_KEY, "战技 N"),
+    ("e", "连携技"),
     (_ULT_ACTION_KEY, "终结技 N"),
-    (_SLEEP_KEY, "等待 N 秒"), (_NORMAL_KEY, "普通战斗 N 秒"),
+    (_SLEEP_KEY, "等待 N 秒"),
+    (_NORMAL_KEY, "普通战斗 N 秒"),
 ]
 
 # 条件原子选项 key（带 SpinBox 选择数字）
@@ -58,7 +83,9 @@ _ULT_KEY = "__ult__"
 _SKILL_KEY = "__skill__"
 
 _ATOM_OPTIONS = [  # (key, 显示名)
-    (_ULT_KEY, "终结技 N 可用"), ("link", "连携技可用"), (_SKILL_KEY, "技力 ≥ N"),
+    (_ULT_KEY, "终结技 N 可用"),
+    ("link", "连携技可用"),
+    (_SKILL_KEY, "技力 ≥ N"),
 ]
 
 # 模板映射：key → 下拉列表中的模板文字
@@ -350,7 +377,7 @@ class _ActionListEditor(QWidget):
 
     def load(self, tokens: list):
         self._list.clear()
-        for t in (tokens if isinstance(tokens, list) else []):
+        for t in tokens if isinstance(tokens, list) else []:
             self._add_row(t, emit=False)
 
     def _make_row(self, token: str) -> _ActionRow:
@@ -645,7 +672,7 @@ class _ConditionEditDialog(MessageBoxBase):
         opacityEffect.setOpacity(0.0)
         QDialog.showEvent(self, event)
         self.widget.adjustSize()
-        ani = QPropertyAnimation(opacityEffect, b'opacity', self)
+        ani = QPropertyAnimation(opacityEffect, b"opacity", self)
         ani.setStartValue(0.0)
         ani.setEndValue(1.0)
         ani.setDuration(150)
@@ -661,7 +688,7 @@ class _ConditionEditDialog(MessageBoxBase):
         self.widget.setGraphicsEffect(None)
         opacityEffect = QGraphicsOpacityEffect(self.widget)
         self.widget.setGraphicsEffect(opacityEffect)
-        ani = QPropertyAnimation(opacityEffect, b'opacity', self)
+        ani = QPropertyAnimation(opacityEffect, b"opacity", self)
         ani.setStartValue(1.0)
         ani.setEndValue(0.0)
         ani.setDuration(100)
@@ -681,7 +708,7 @@ class _ConditionEditDialog(MessageBoxBase):
 class _ConditionDisplayCard(QFrame):
     """只读显示卡片：两行（条件行 / 动作行），行间浅色线，右键菜单。"""
 
-    selected = Signal(object)      # emit self
+    selected = Signal(object)  # emit self
     right_clicked = Signal(object, QPoint)  # emit self, global_pos
     double_clicked = Signal(object)  # emit self
 
@@ -693,9 +720,7 @@ class _ConditionDisplayCard(QFrame):
         self._node = node
         self._build()
         self.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.customContextMenuRequested.connect(
-            lambda pos: self.right_clicked.emit(self, self.mapToGlobal(pos))
-        )
+        self.customContextMenuRequested.connect(lambda pos: self.right_clicked.emit(self, self.mapToGlobal(pos)))
 
     def _build(self):
         layout = self.layout()
@@ -827,7 +852,7 @@ class _ConditionListEditDialog(MessageBoxBase):
         opacityEffect.setOpacity(0.0)
         QDialog.showEvent(self, event)
         self.widget.adjustSize()
-        ani = QPropertyAnimation(opacityEffect, b'opacity', self)
+        ani = QPropertyAnimation(opacityEffect, b"opacity", self)
         ani.setStartValue(0.0)
         ani.setEndValue(1.0)
         ani.setDuration(150)
@@ -843,7 +868,7 @@ class _ConditionListEditDialog(MessageBoxBase):
         self.widget.setGraphicsEffect(None)  # 清除阴影
         opacityEffect = QGraphicsOpacityEffect(self.widget)
         self.widget.setGraphicsEffect(opacityEffect)
-        ani = QPropertyAnimation(opacityEffect, b'opacity', self)
+        ani = QPropertyAnimation(opacityEffect, b"opacity", self)
         ani.setStartValue(1.0)
         ani.setEndValue(0.0)
         ani.setDuration(100)
@@ -959,17 +984,15 @@ class _ConditionListEditDialog(MessageBoxBase):
 
 # 主面板: 4 行配置项 (无折叠, 与其他配置行样式一致)
 class ConditionalRotationPanel(QWidget):
-    """实时条件面板: 四行配置项.
+    """实时条件动作列表编辑按钮.
 
-    启用实时条件 / 立即释放终结技 / 立即释放连携技 / 动作列表(编辑按钮).
+    渲染一个「动作列表」行，点击弹出实时条件 AST 编辑对话框.
     """
 
     def __init__(self, parent=None, config=None):
         super().__init__(parent)
         self.config = config or get_global_config(BATTLE_CONFIG_NAME)
-        self._loading = False
         self._setup_ui()
-        self._load()
 
     def _setup_ui(self):
         # 与 LabelAnd* 控件保持一致的约定：把主布局存为 self.layout 属性（遮蔽 Qt 的
@@ -979,56 +1002,17 @@ class ConditionalRotationPanel(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
 
-        # Row 1: 启用实时条件
-        self._row1 = LabelAndWidget(KEY_COND_ENABLED, BATTLE_CONFIG_DESCRIPTION[KEY_COND_ENABLED])
-        self.enable_switch = SwitchButton(indicatorPos=IndicatorPosition.RIGHT)
-        self.enable_switch.setOnText(_tr("是"))
-        self.enable_switch.setOffText(_tr("否"))
-        self.enable_switch.checkedChanged.connect(lambda c: self._set_config(KEY_COND_ENABLED, c))
-        self._row1.add_widget(self.enable_switch, stretch=0)
-        self.layout.addWidget(self._row1)
-
-        # Row 2: 立即释放终结技
-        self._row2 = LabelAndWidget(KEY_INSTANT_ULT, BATTLE_CONFIG_DESCRIPTION[KEY_INSTANT_ULT])
-        self.ult_switch = SwitchButton(indicatorPos=IndicatorPosition.RIGHT)
-        self.ult_switch.setOnText(_tr("是"))
-        self.ult_switch.setOffText(_tr("否"))
-        self.ult_switch.checkedChanged.connect(lambda c: self._set_config(KEY_INSTANT_ULT, c))
-        self._row2.add_widget(self.ult_switch, stretch=0)
-        self.layout.addWidget(self._row2)
-
-        # Row 3: 立即释放连携技
-        self._row3 = LabelAndWidget(KEY_INSTANT_LINK, BATTLE_CONFIG_DESCRIPTION[KEY_INSTANT_LINK])
-        self.link_switch = SwitchButton(indicatorPos=IndicatorPosition.RIGHT)
-        self.link_switch.setOnText(_tr("是"))
-        self.link_switch.setOffText(_tr("否"))
-        self.link_switch.checkedChanged.connect(lambda c: self._set_config(KEY_INSTANT_LINK, c))
-        self._row3.add_widget(self.link_switch, stretch=0)
-        self.layout.addWidget(self._row3)
-
-        # Row 4: 动作列表 + 编辑按钮
-        self._row4 = LabelAndWidget(_tr("动作列表"), _tr("当条件符合时使用技能组"))
-        self._row4.contentLabel.setWordWrap(False)
+        # 动作列表 + 编辑按钮
+        self._row = LabelAndWidget(_tr("动作列表"), _tr("当条件符合时使用技能组"))
+        self._row.contentLabel.setWordWrap(False)
         self.edit_btn = PushButton(FluentIcon.EDIT, _tr("编辑"))
         self.edit_btn.clicked.connect(self._on_edit)
-        self._row4.add_widget(self.edit_btn, stretch=0)
-        self.layout.addWidget(self._row4)
-
-    def _load(self):
-        self._loading = True
-        self.enable_switch.setChecked(bool(self.config.get(KEY_COND_ENABLED, False)))
-        self.ult_switch.setChecked(bool(self.config.get(KEY_INSTANT_ULT, False)))
-        self.link_switch.setChecked(bool(self.config.get(KEY_INSTANT_LINK, False)))
-        self._loading = False
+        self._row.add_widget(self.edit_btn, stretch=0)
+        self.layout.addWidget(self._row)
 
     def update_value(self):
         """供 ConfigCard.update_config 调用."""
-        self._load()
-
-    def _set_config(self, key: str, value):
-        if self._loading:
-            return
-        self.config[key] = value
+        pass
 
     def _on_edit(self):
         raw_ast = self.config.get(KEY_COND_SEQUENCE, [])
