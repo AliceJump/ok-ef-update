@@ -5,6 +5,7 @@ HWND_TOPMOST，任务销毁时统一恢复为非 TOPMOST。
 
 无需手动调用，Mixin 在 ``run()`` 中自动启动监测，
 ``disable()`` / ``on_destroy()`` 中自动停止并恢复。
+暂停时恢复窗口但保留记录，恢复时对仍存在的窗口重新置顶。
 """
 
 from __future__ import annotations
@@ -156,11 +157,17 @@ class TopmostMixin:
                 timer_fired = threading.Event()
 
                 def _delayed_start() -> None:
-                    timer_fired.set()
-                    try:
-                        self_inner.start_topmost_monitor()
-                    except Exception:
-                        pass
+                    # pause() may happen while this timer is pending. Keep the
+                    # state check and start in one critical section so a paused
+                    # task cannot restart monitoring after its windows restore.
+                    with self_inner._topmost_state_lock:
+                        if self_inner._topmost_paused:
+                            return
+                        timer_fired.set()
+                        try:
+                            self_inner.start_topmost_monitor()
+                        except Exception:
+                            pass
 
                 delay_timer = threading.Timer(self_inner._TOPMOST_START_DELAY, _delayed_start)
                 delay_timer.daemon = True
@@ -182,6 +189,8 @@ class TopmostMixin:
 
     def _init_topmost_mixin(self) -> None:
         self._topmost_stop_event = threading.Event()
+        self._topmost_state_lock = threading.RLock()
+        self._topmost_paused = False
         self._topmost_lock = threading.Lock()
         self._topmost_modified: set[int] = set()
         self._topmost_thread: threading.Thread | None = None
@@ -204,28 +213,44 @@ class TopmostMixin:
         self.stop_topmost_monitor()
         super().disable()
 
+    def pause(self) -> None:
+        """任务暂停时恢复窗口并保留记录，resume 时重新置顶。"""
+        self.pause_topmost_monitor()
+        return super().pause()
+
+    def unpause(self) -> None:
+        """任务恢复时重新置顶暂停前记录的窗口。"""
+        self.resume_topmost_monitor()
+        return super().unpause()
+
     # ── 公开 API ──────────────────────────────────────────────
 
     def start_topmost_monitor(self) -> None:
         """启动 TOPMOST 监测线程。重复调用安全（已运行则忽略）。"""
-        if self._topmost_thread is not None and self._topmost_thread.is_alive():
-            return
-        self._topmost_stop_event.clear()
-        self._topmost_prev_fg = 0
-        t = threading.Thread(
-            target=self._topmost_monitor_loop,
-            name="topmost-monitor",
-            daemon=True,
-        )
-        self._topmost_thread = t
-        t.start()
-        logger.info("topmost monitor 已启动")
+        with self._topmost_state_lock:
+            if self._topmost_paused or (
+                self._topmost_thread is not None and self._topmost_thread.is_alive()
+            ):
+                return
+            self._topmost_stop_event.clear()
+            self._topmost_prev_fg = 0
+            t = threading.Thread(
+                target=self._topmost_monitor_loop,
+                name="topmost-monitor",
+                daemon=True,
+            )
+            self._topmost_thread = t
+            t.start()
+            logger.info("topmost monitor 已启动")
 
     def stop_topmost_monitor(self) -> None:
         """停止监测并恢复所有被本机制修改过的窗口。
 
         可安全重复调用。放在 try/finally 或 on_destroy 中均可靠。
         """
+        # 先设置停止事件，再等待线程完全退出，
+        # 最后才获取锁取走恢复集合——避免线程在 _restore_all_modified()
+        # 清空集合后仍新增未记录的窗口修改。
         self._topmost_stop_event.set()
         thread = self._topmost_thread
         if thread is not None and thread.is_alive():
@@ -233,6 +258,51 @@ class TopmostMixin:
         if thread is None or not thread.is_alive():
             self._topmost_thread = None
         self._restore_all_modified()
+
+    def pause_topmost_monitor(self) -> None:
+        """暂停监测：恢复所有窗口，但保留记录以便 resume 时重新置顶。
+
+        与 ``stop_topmost_monitor`` 的区别在于不清空 ``_topmost_modified`` 集合，
+        resume 时仅对仍存在的窗口重新置顶。
+        """
+        with self._topmost_state_lock:
+            self._topmost_paused = True
+            self._topmost_stop_event.set()
+            thread = self._topmost_thread
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=1.0)
+        if thread is None or not thread.is_alive():
+            self._topmost_thread = None
+        # 恢复窗口但保留记录
+        self._restore_all_modified(keep_records=True)
+
+    def resume_topmost_monitor(self) -> None:
+        """恢复监测：对暂停前记录且仍存在的窗口重新置顶，然后重启监测线程。"""
+        with self._topmost_state_lock:
+            self._topmost_paused = False
+            # 先对暂停前记录的窗口重新置顶（仅仍存在的）
+            self._reapply_modified()
+            # 清除暂停状态后重启监测线程
+            self.start_topmost_monitor()
+
+    def _reapply_modified(self) -> None:
+        """对已记录但仍存在且可见、未最小化的窗口重新设置 TOPMOST。"""
+        with self._topmost_lock:
+            candidates = [
+                hwnd
+                for hwnd in self._topmost_modified
+                if win32gui.IsWindow(hwnd) and win32gui.IsWindowVisible(hwnd) and not win32gui.IsIconic(hwnd)
+            ]
+
+        reapplied = 0
+        for hwnd in candidates:
+            try:
+                if _set_window_topmost(hwnd):
+                    reapplied += 1
+            except Exception:
+                pass
+        if reapplied:
+            logger.info(f"topmost 恢复置顶: {reapplied} 个窗口")
 
     # ── 内部实现 ──────────────────────────────────────────────
 
@@ -286,26 +356,35 @@ class TopmostMixin:
 
         try:
             cls_name = win32gui.GetClassName(fg)
-            win_title = win32gui.GetWindowText(fg)
-            logger.info(f"topmost 已置顶: hwnd=0x{fg:X}  class={cls_name}  title={win_title}")
+            logger.info(f"topmost 已置顶: hwnd=0x{fg:X}  class={cls_name}")
         except Exception:
             logger.info(f"topmost 已置顶: hwnd=0x{fg:X}")
 
-    def _restore_all_modified(self) -> None:
-        """将所有被本机制修改过的窗口恢复为非 TOPMOST。"""
+    def _restore_all_modified(self, keep_records: bool = False) -> None:
+        """将所有被本机制修改过的窗口恢复为非 TOPMOST。
+
+        Args:
+            keep_records: True 时仅恢复窗口但保留 ``_topmost_modified`` 记录，
+                供 ``resume_topmost_monitor`` 重新置顶使用。
+        """
         with self._topmost_lock:
             to_restore = list(self._topmost_modified)
-            self._topmost_modified.clear()
+            if not keep_records:
+                self._topmost_modified.clear()
         self._topmost_prev_fg = 0
 
+        restored = 0
+        failed = 0
         for hwnd in to_restore:
             try:
                 if win32gui.IsWindow(hwnd):
-                    _remove_window_topmost(hwnd)
-                    cls_name = win32gui.GetClassName(hwnd)
-                    win_title = win32gui.GetWindowText(hwnd)
-                    logger.info(f"topmost 已恢复: hwnd=0x{hwnd:X}  class={cls_name}  title={win_title}")
+                    if _remove_window_topmost(hwnd):
+                        logger.info(f"topmost 已恢复: hwnd=0x{hwnd:X}")
+                        restored += 1
+                    else:
+                        logger.warning(f"topmost 恢复失败: hwnd=0x{hwnd:X}")
+                        failed += 1
             except Exception:
                 pass
         if to_restore:
-            logger.info(f"topmost 恢复完成，共 {len(to_restore)} 个窗口")
+            logger.info(f"topmost 恢复完成: 成功 {restored}，失败 {failed}，共 {len(to_restore)} 个窗口")

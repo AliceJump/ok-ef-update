@@ -31,6 +31,9 @@ class EfInteraction(PostMessageInteraction):
         self._esc_hwnd = 0
         self._pressed_keys = {}  # 已成功按下的按键计数映射（规范化身份 -> 次数）
         self.keyboard = Controller()
+        self.click_pos = None
+        self.move_Cursor = False
+        self._mouse_button_down = False
 
     def _get_mouse_button_messages(self, key):
         """获取鼠标按键对应的 Windows 消息。"""
@@ -108,12 +111,16 @@ class EfInteraction(PostMessageInteraction):
         btn_down, btn_mk, _ = self._get_mouse_button_messages(key)
 
         self.post(btn_down, btn_mk, self.click_pos)
+        self._mouse_button_down = True
 
     def mouse_up(self, name=None, key="right"):
+        if not self._mouse_button_down:
+            return
         _, _, btn_up = self._get_mouse_button_messages(key)
 
         self.post(btn_up, 0, self.click_pos)
         self._restore_cursor()
+        self._mouse_button_down = False
 
     def _click_middle(self, x=-1, y=-1, down_time=0.001):
         """真实鼠标事件点击中键。
@@ -122,7 +129,8 @@ class EfInteraction(PostMessageInteraction):
         真实鼠标事件直接投递到当前前台窗口，可靠性更高。
         游戏通常处于鼠标捕获模式，点击后无需恢复光标位置。
         """
-        active_and_send_mouse_delta(self._game_hwnd(), only_activate=True)
+        if not active_and_send_mouse_delta(self._game_hwnd(), only_activate=True):
+            return
         if x < 0:
             x = round(self.capture.width * 0.5)
             y = round(self.capture.height * 0.5)
