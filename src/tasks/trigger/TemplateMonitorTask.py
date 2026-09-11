@@ -30,9 +30,7 @@ class TemplateMonitorTask(BaseEfTask, TriggerTask):
 
         self.config_type = {
             "模板ID": {"type": "drop_down", "options": feature_options},
-            "识别框": {"type": "text_edit"},
             "模板HSV处理器": {"type": "drop_down", "options": [""] + hsv_options},
-            "启用反转": {"type": "switch"},
         }
 
         self.config_description = {
