@@ -905,18 +905,6 @@
             <translation>Disable Boxes</translation>
         </message>
         <message>
-            <source>Show Log on Overlay</source>
-            <translation>Show Log on Overlay</translation>
-        </message>
-        <message>
-            <source>Hide Log on Overlay</source>
-            <translation>Hide Log on Overlay</translation>
-        </message>
-        <message>
-            <source>Debug Overlay</source>
-            <translation>Debug Overlay</translation>
-        </message>
-        <message>
             <source>Debug</source>
             <translation>Debug</translation>
         </message>
@@ -1649,6 +1637,78 @@
         <message>
             <source>Requires the local WeChat client window to be open and running</source>
             <translation>Requires the local WeChat client window to be open and running</translation>
+        </message>
+        <message>
+            <source>SMTP Notification</source>
+            <translation>SMTP Notification</translation>
+        </message>
+        <message>
+            <source>SMTP Host</source>
+            <translation>SMTP Host</translation>
+        </message>
+        <message>
+            <source>SMTP Port</source>
+            <translation>SMTP Port</translation>
+        </message>
+        <message>
+            <source>SMTP Username</source>
+            <translation>SMTP Username</translation>
+        </message>
+        <message>
+            <source>SMTP Password</source>
+            <translation>SMTP Password</translation>
+        </message>
+        <message>
+            <source>SMTP Use TLS</source>
+            <translation>SMTP Use TLS</translation>
+        </message>
+        <message>
+            <source>SMTP Default Sender</source>
+            <translation>SMTP Default Sender</translation>
+        </message>
+        <message>
+            <source>SMTP Default Recipient</source>
+            <translation>SMTP Default Recipient</translation>
+        </message>
+        <message>
+            <source>Send notifications through an SMTP email server</source>
+            <translation>Send notifications through an SMTP email server</translation>
+        </message>
+        <message>
+            <source>SMTP server address (e.g. smtp.qq.com)</source>
+            <translation>SMTP server address (e.g. smtp.qq.com)</translation>
+        </message>
+        <message>
+            <source>SMTP server port (587 for STARTTLS)</source>
+            <translation>SMTP server port (587 for STARTTLS)</translation>
+        </message>
+        <message>
+            <source>Username for SMTP authentication (your own email address)</source>
+            <translation>Username for SMTP authentication (your own email address)</translation>
+        </message>
+        <message>
+            <source>Get an authorization code from your email settings</source>
+            <translation>Get an authorization code from your email settings</translation>
+        </message>
+        <message>
+            <source>Use STARTTLS encryption (recommended for port 587)</source>
+            <translation>Use STARTTLS encryption (recommended for port 587)</translation>
+        </message>
+        <message>
+            <source>Sender email address</source>
+            <translation>Sender email address</translation>
+        </message>
+        <message>
+            <source>Recipient email address(es), comma-separated</source>
+            <translation>Recipient email address(es), comma-separated</translation>
+        </message>
+        <message>
+            <source>SMTP server port (587 or 465)</source>
+            <translation>SMTP server port (587 or 465)</translation>
+        </message>
+        <message>
+            <source>Enable TLS encryption (STARTTLS for 587, SMTPS for 465)</source>
+            <translation>Enable TLS encryption (STARTTLS for 587, SMTPS for 465)</translation>
         </message>
     </context>
     <context>
@@ -3065,10 +3125,6 @@
             <translation>Debug</translation>
         </message>
         <message>
-            <source>Debug Overlay</source>
-            <translation>Debug Overlay</translation>
-        </message>
-        <message>
             <source>Disable Boxes</source>
             <translation>Disable Boxes</translation>
         </message>
@@ -3083,10 +3139,6 @@
         <message>
             <source>Export Logs</source>
             <translation>Export Logs</translation>
-        </message>
-        <message>
-            <source>Hide Log on Overlay</source>
-            <translation>Hide Log on Overlay</translation>
         </message>
         <message>
             <source>Install Folder</source>
@@ -3127,10 +3179,6 @@
         <message>
             <source>Search title or exe...</source>
             <translation>Search title or exe...</translation>
-        </message>
-        <message>
-            <source>Show Log on Overlay</source>
-            <translation>Show Log on Overlay</translation>
         </message>
         <message>
             <source>Toggle navigation</source>

@@ -903,18 +903,6 @@
             <translation>停用標記框</translation>
         </message>
         <message>
-            <source>Show Log on Overlay</source>
-            <translation>在懸浮窗顯示日誌</translation>
-        </message>
-        <message>
-            <source>Hide Log on Overlay</source>
-            <translation>隱藏懸浮窗日誌</translation>
-        </message>
-        <message>
-            <source>Debug Overlay</source>
-            <translation>除錯懸浮窗</translation>
-        </message>
-        <message>
             <source>Debug</source>
             <translation>開發工具</translation>
         </message>
@@ -1643,6 +1631,78 @@
         <message>
             <source>Requires the local WeChat client window to be open and running</source>
             <translation>需要本機微信用戶端視窗保持開啟並執行</translation>
+        </message>
+        <message>
+            <source>SMTP Notification</source>
+            <translation>SMTP 郵件通知</translation>
+        </message>
+        <message>
+            <source>SMTP Host</source>
+            <translation>SMTP 伺服器</translation>
+        </message>
+        <message>
+            <source>SMTP Port</source>
+            <translation>SMTP 連接埠</translation>
+        </message>
+        <message>
+            <source>SMTP Username</source>
+            <translation>使用者名稱</translation>
+        </message>
+        <message>
+            <source>SMTP Password</source>
+            <translation>密碼</translation>
+        </message>
+        <message>
+            <source>SMTP Use TLS</source>
+            <translation>加密</translation>
+        </message>
+        <message>
+            <source>SMTP Default Sender</source>
+            <translation>寄件人</translation>
+        </message>
+        <message>
+            <source>SMTP Default Recipient</source>
+            <translation>收件人</translation>
+        </message>
+        <message>
+            <source>Send notifications through an SMTP email server</source>
+            <translation>透過 SMTP 郵件伺服器傳送通知</translation>
+        </message>
+        <message>
+            <source>SMTP server address (e.g. smtp.qq.com)</source>
+            <translation>SMTP 伺服器位址（例如 smtp.qq.com）</translation>
+        </message>
+        <message>
+            <source>SMTP server port (587 for STARTTLS)</source>
+            <translation>SMTP 伺服器連接埠（STARTTLS 使用 587）</translation>
+        </message>
+        <message>
+            <source>Username for SMTP authentication (your own email address)</source>
+            <translation>認證使用者名稱，填入自己的信箱即可</translation>
+        </message>
+        <message>
+            <source>Get an authorization code from your email settings</source>
+            <translation>在信箱設定介面取得授權碼</translation>
+        </message>
+        <message>
+            <source>Use STARTTLS encryption (recommended for port 587)</source>
+            <translation>使用 STARTTLS 加密（建議用於 587 連接埠）</translation>
+        </message>
+        <message>
+            <source>Sender email address</source>
+            <translation>寄件人信箱位址</translation>
+        </message>
+        <message>
+            <source>Recipient email address(es), comma-separated</source>
+            <translation>收件人信箱位址，多個以逗號分隔</translation>
+        </message>
+        <message>
+            <source>SMTP server port (587 or 465)</source>
+            <translation>SMTP 伺服器連接埠（587或465）</translation>
+        </message>
+        <message>
+            <source>Enable TLS encryption (STARTTLS for 587, SMTPS for 465)</source>
+            <translation>啟用 TLS 加密（587 連接埠用 STARTTLS，465 連接埠用 SMTPS）</translation>
         </message>
     </context>
     <context>
@@ -3059,10 +3119,6 @@
             <translation>開發工具</translation>
         </message>
         <message>
-            <source>Debug Overlay</source>
-            <translation>除錯懸浮窗</translation>
-        </message>
-        <message>
             <source>Disable Boxes</source>
             <translation>停用標記框</translation>
         </message>
@@ -3077,10 +3133,6 @@
         <message>
             <source>Export Logs</source>
             <translation>匯出日誌</translation>
-        </message>
-        <message>
-            <source>Hide Log on Overlay</source>
-            <translation>隱藏懸浮窗日誌</translation>
         </message>
         <message>
             <source>Install Folder</source>
@@ -3121,10 +3173,6 @@
         <message>
             <source>Search title or exe...</source>
             <translation>搜尋標題或程式...</translation>
-        </message>
-        <message>
-            <source>Show Log on Overlay</source>
-            <translation>在懸浮窗顯示日誌</translation>
         </message>
         <message>
             <source>Toggle navigation</source>

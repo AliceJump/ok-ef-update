@@ -903,18 +903,6 @@
             <translation>Desactivar cuadros</translation>
         </message>
         <message>
-            <source>Show Log on Overlay</source>
-            <translation>Mostrar registro en superposición</translation>
-        </message>
-        <message>
-            <source>Hide Log on Overlay</source>
-            <translation>Ocultar registro en superposición</translation>
-        </message>
-        <message>
-            <source>Debug Overlay</source>
-            <translation>Superposición de depuración</translation>
-        </message>
-        <message>
             <source>Debug</source>
             <translation>Depurar</translation>
         </message>
@@ -1647,6 +1635,78 @@
         <message>
             <source>Requires the local WeChat client window to be open and running</source>
             <translation>Requiere que la ventana del cliente local de WeChat esté abierta y en ejecución</translation>
+        </message>
+        <message>
+            <source>SMTP Notification</source>
+            <translation>Notificación por SMTP</translation>
+        </message>
+        <message>
+            <source>SMTP Host</source>
+            <translation>Servidor SMTP</translation>
+        </message>
+        <message>
+            <source>SMTP Port</source>
+            <translation>Puerto SMTP</translation>
+        </message>
+        <message>
+            <source>SMTP Username</source>
+            <translation>Nombre de usuario</translation>
+        </message>
+        <message>
+            <source>SMTP Password</source>
+            <translation>Contraseña</translation>
+        </message>
+        <message>
+            <source>SMTP Use TLS</source>
+            <translation>Cifrado</translation>
+        </message>
+        <message>
+            <source>SMTP Default Sender</source>
+            <translation>Remitente</translation>
+        </message>
+        <message>
+            <source>SMTP Default Recipient</source>
+            <translation>Destinatario</translation>
+        </message>
+        <message>
+            <source>Send notifications through an SMTP email server</source>
+            <translation>Enviar notificaciones a través de un servidor de correo SMTP</translation>
+        </message>
+        <message>
+            <source>SMTP server address (e.g. smtp.qq.com)</source>
+            <translation>Dirección del servidor SMTP (p. ej., smtp.qq.com)</translation>
+        </message>
+        <message>
+            <source>SMTP server port (587 for STARTTLS)</source>
+            <translation>Puerto del servidor SMTP (587 para STARTTLS)</translation>
+        </message>
+        <message>
+            <source>Username for SMTP authentication (your own email address)</source>
+            <translation>Nombre de usuario para autenticación (introduce tu propia dirección de correo)</translation>
+        </message>
+        <message>
+            <source>Get an authorization code from your email settings</source>
+            <translation>Obtén un código de autorización en la configuración de tu correo</translation>
+        </message>
+        <message>
+            <source>Use STARTTLS encryption (recommended for port 587)</source>
+            <translation>Usar cifrado STARTTLS (recomendado para el puerto 587)</translation>
+        </message>
+        <message>
+            <source>Sender email address</source>
+            <translation>Dirección de correo del remitente</translation>
+        </message>
+        <message>
+            <source>Recipient email address(es), comma-separated</source>
+            <translation>Dirección de correo del destinatario (varias separadas por comas)</translation>
+        </message>
+        <message>
+            <source>SMTP server port (587 or 465)</source>
+            <translation>Puerto del servidor SMTP (587 o 465)</translation>
+        </message>
+        <message>
+            <source>Enable TLS encryption (STARTTLS for 587, SMTPS for 465)</source>
+            <translation>Habilitar cifrado TLS (STARTTLS en el puerto 587, SMTPS en el 465)</translation>
         </message>
     </context>
     <context>
@@ -3063,10 +3123,6 @@
             <translation>Depurar</translation>
         </message>
         <message>
-            <source>Debug Overlay</source>
-            <translation>Superposición de depuración</translation>
-        </message>
-        <message>
             <source>Disable Boxes</source>
             <translation>Desactivar cuadros</translation>
         </message>
@@ -3081,10 +3137,6 @@
         <message>
             <source>Export Logs</source>
             <translation>Exportar registros</translation>
-        </message>
-        <message>
-            <source>Hide Log on Overlay</source>
-            <translation>Ocultar registro en superposición</translation>
         </message>
         <message>
             <source>Install Folder</source>
@@ -3125,10 +3177,6 @@
         <message>
             <source>Search title or exe...</source>
             <translation>Buscar título o ejecutable...</translation>
-        </message>
-        <message>
-            <source>Show Log on Overlay</source>
-            <translation>Mostrar registro en superposición</translation>
         </message>
         <message>
             <source>Toggle navigation</source>
