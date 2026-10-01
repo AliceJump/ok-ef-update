@@ -3,7 +3,6 @@ import math
 import os
 import re
 import subprocess
-import tempfile
 import threading
 import time
 import webbrowser
@@ -32,6 +31,7 @@ SPECIAL_ITEM_Y_OFFSET = {
 
 # 本地 WS 模式依赖的油猴脚本（相对仓库根目录）
 RELAY_USER_SCRIPT = "assets/scripts/endfield-ws-position-relay.user.js"
+USER_SCRIPT_HELP_URL = "https://ok-script.com/ok-end-field/docs/物品导航与实时检测/"
 
 # 「获取 content」使用说明里展示给用户的地址（用户手动访问 / 在开发者工具里筛选用）
 OFFICIAL_MAP_PAGE_URL = "https://game.skland.com/map/endfield"
@@ -125,7 +125,7 @@ class ItemNavigatorTask(InstructionsMixin, WsPositionMixin, BaseEfTask, TriggerT
                     "0 表示不绘制底板；headless 模式下该值为 0 才不显示底板。"
                 ),
                 "浮层字号": ("浮层文字字号，按 1080p 窗口高度为基准的像素值，\n会随窗口高度等比缩放。"),
-                "油猴脚本帮助": ("打开临时帮助文档。\n同时打开油猴脚本目录。"),
+                "油猴脚本帮助": ("打开官网物品导航使用说明。\n同时打开油猴脚本目录。"),
             }
         )
         self.default_config_group.update(
@@ -150,7 +150,6 @@ class ItemNavigatorTask(InstructionsMixin, WsPositionMixin, BaseEfTask, TriggerT
         # 箭头渲染可调参数（便于快速微调视觉）
         self._arrow_center_rel = (162 / 1920, 166 / 1080)  # 相对于窗口的箭头中心位置（比例），默认在左上角稍微偏右下
         self._arrow_max_len_ratio = 0.08
-        self._arrow_min_len_px = 20.0
         self._arrow_scale = 1.144
         self._nearby_marker_max_distance = 75.524
         # 附近小箭头：箭尖固定在目标位置，尾巴长度表示高差（同高最短，高差越大越长）
@@ -183,10 +182,6 @@ class ItemNavigatorTask(InstructionsMixin, WsPositionMixin, BaseEfTask, TriggerT
         # dirty-save 控制：标记后延迟合并写盘
         self._dirty = False
         self._last_save_time = 0.0
-        # 标记按键状态：记录本次按住期间是否已标记（防止按住期间反复标记）
-        self._mark_key_held_in_cycle = False
-        # 按键按下计时：用于判断按住持续时间（None 表示当前未按下）
-        self._mark_key_hold_start = None
         # 锁定待标记的目标（在接近阈值内）
         # 格式: {'map_id': str, 'hash': str, 'start_time': float | None}
         self._mark_lock_target = None
@@ -440,31 +435,10 @@ class ItemNavigatorTask(InstructionsMixin, WsPositionMixin, BaseEfTask, TriggerT
         """打开浏览器油猴脚本使用帮助，并打开脚本目录。"""
         script_abs = (Path.cwd() / RELAY_USER_SCRIPT).resolve()
         script_dir = script_abs.parent
-        help_text = (
-            "终末地坐标转发油猴脚本使用帮助\n\n"
-            "1. 安装浏览器扩展 Tampermonkey（油猴）。\n"
-            "2. 打开脚本目录并导入脚本文件：\n"
-            f"   {script_abs}\n"
-            "3. 在 Tampermonkey 中启用该脚本。\n"
-            "4. 打开网页地图 https://game.skland.com/map/endfield ，确认脚本已运行。\n"
-            "5. 启动物品导航任务后，程序会监听 ws://127.0.0.1:3001 的位置数据。\n\n"
-            "提示：\n"
-            "- 先确保本地未被防火墙拦截 3001 端口。\n"
-            "- 如脚本无日志，检查 Tampermonkey 是否允许在目标网址运行。\n"
-        )
 
         try:
-            tf = tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w", encoding="utf-8")
-            tf.write(help_text)
-            tf.flush()
-            tf.close()
-            help_path = tf.name
-
-            if os.name == "nt":
-                os.startfile(help_path)
-            else:
-                webbrowser.open(f"file://{help_path}")
-            self.log_info(f"已打开油猴脚本帮助: {help_path}")
+            webbrowser.open(USER_SCRIPT_HELP_URL)
+            self.log_info(f"已打开油猴脚本帮助: {USER_SCRIPT_HELP_URL}")
         except Exception as e:
             self.log_error(f"打开油猴脚本帮助失败: {e}")
 
