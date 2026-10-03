@@ -64,7 +64,9 @@ def _area_trade_key_map() -> dict[str, str]:
     return key_map
 
 
-def _import_legacy_selection(source_config: dict, target_config: dict, target_key: str, *, ops_key: str, defaults: list):
+def _import_legacy_selection(
+    source_config: dict, target_config: dict, target_key: str, *, ops_key: str, defaults: list
+):
     """导入旧开关/操作列表；目标已有列表时保留目标值。"""
     if isinstance(target_config.get(target_key), list):
         return _NO_MIGRATION
@@ -194,6 +196,11 @@ DAILY_SPLIT_IMPORTS: dict[str, dict[str, dict[str, dict[str, Any]]]] = {
         "BoatHarvestTask": {"DailyTask": {"⭐帝江号收菜": _import_boat_stages}},
         "RegionalBuildTask": {"DailyTask": {"⭐地区建设": _import_region_options}},
         "ActivityRewardTask": {"DailyTask": {"⭐活动奖励": _import_activity_rewards}},
+    },
+    # 日常总开关由一串 bool 改为固定分组列表前，先备份 DailyTask 与账号覆盖。
+    # 实际值转换由 DailyTask.config_value_migrations 完成；空映射只承担备份/批次标记职责。
+    "daily_task_group_selection_v4": {
+        "DailyTask": {"DailyTask": {}},
     },
 }
 
