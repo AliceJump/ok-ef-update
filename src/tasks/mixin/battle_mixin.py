@@ -1034,12 +1034,11 @@ class BattleMixin(BaseEfTask):
         if probe is None or frame is None or getattr(frame, "ndim", 0) != 3:
             return {}
         rows, size, seen_at = probe
-        if (size != (frame.shape[1], frame.shape[0])
-                or not 0 <= observed_at - seen_at <= _COMBO_TEAM_PROBE_MAX_AGE):
+        if size != (frame.shape[1], frame.shape[0]) or not 0 <= observed_at - seen_at <= _COMBO_TEAM_PROBE_MAX_AGE:
             return {}
         names = _load_char_name_map()
         variants = {}
-        for slot, (name, _score, feature) in enumerate(rows[:len(team)], 1):
+        for slot, (name, _score, feature) in enumerate(rows[: len(team)], 1):
             member = team[slot - 1]
             if name == "?" or member == "?":
                 continue
@@ -1643,6 +1642,27 @@ class BattleMixin(BaseEfTask):
                 self.find_feature(feature=fL.restart_battle, box=self.box_of_screen(0.550, 0.896, 0.574, 0.943)),
             )
         )
+
+    def wait_battle_space(self, transition_recovery=None, time_out=300):
+        """按当前画面验证入场；上一步恢复由调用方提供，超时仅作 watchdog。"""
+        start = self.active_time()
+        last_log = start
+        self.log_info("等待进入协议空间")
+        while True:
+            self.next_frame()
+            if self.find_feature(feature=fL.battle_space_left):
+                self.log_info("已进入协议空间")
+                return True
+            now = self.active_time()
+            if now - start >= time_out:
+                self.log_info("等待进入协议空间超时")
+                return False
+            if transition_recovery is not None:
+                transition_recovery()
+            if now - last_log >= 10:
+                self.log_info("尚未检测到协议空间，继续检查入场状态")
+                last_log = now
+            self.sleep(0.1)
 
     def auto_battle(self, no_battle: bool = False):
         """
