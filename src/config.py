@@ -6,7 +6,7 @@ from src.core.email_config import email_config_option
 from src.interaction.EfInteraction import EfInteraction
 from src.tasks.daily.finally_file import decode
 
-version = "v1.1.24"
+version = "v1.1.25"
 
 
 # 不需要修改version, Github Action打包会自动修改
@@ -157,6 +157,7 @@ config = {
         ["src.tasks.test.RealtimeDetectTask", "RealtimeDetectTask"],
         ["src.tasks.test.ZipLineScanDebugTask", "ZipLineScanDebugTask"],
         ["src.tasks.test.ZipLineReplayDebugTask", "ZipLineReplayDebugTask"],
+        ["src.tasks.test.GatherNavigationTestTask", "GatherNavigationTestTask"],
         ["src.tasks.test.PeriodicScreenshotTask", "PeriodicScreenshotTask"],
         ["src.tasks.test.DiagnosisTask", "DiagnosisTask"],
         ["src.tasks.test.MouseRotationCalibration", "MouseRotationCalibration"],
