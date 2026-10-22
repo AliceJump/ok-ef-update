@@ -6,7 +6,7 @@ from src.core.email_config import email_config_option
 from src.interaction.EfInteraction import EfInteraction
 from src.tasks.daily.finally_file import decode
 
-version = "v1.1.28"
+version = "v2.0.0"
 
 
 # 不需要修改version, Github Action打包会自动修改
@@ -153,6 +153,7 @@ config = {
         ["src.tasks.onetime.DemoDrawTask", "DemoDrawTask"],
         ["src.tasks.onetime.YingTuoTask", "YingTuoTask"],
         ["src.tasks.onetime.TestStartGame", "TestStartGame"],
+        ["src.tasks.test.TestReloginTask", "TestReloginTask"],
         ["src.tasks.test.RealtimeDetectTask", "RealtimeYoloScanTask"],
         ["src.tasks.test.RealtimeDetectTask", "RealtimeDetectTask"],
         ["src.tasks.test.ZipLineScanDebugTask", "ZipLineScanDebugTask"],
@@ -162,6 +163,12 @@ config = {
         ["src.tasks.test.PeriodicScreenshotTask", "PeriodicScreenshotTask"],
         ["src.tasks.test.DiagnosisTask", "DiagnosisTask"],
         ["src.tasks.test.MouseRotationCalibration", "MouseRotationCalibration"],
+        ["src.tasks.localization.MinimapRealtimePosition", "MinimapRealtimePosition"],
+        ["src.tasks.localization.MinimapRegionCheck", "MinimapRegionCheck"],
+        ["src.tasks.localization.MinimapScaleCapture", "MinimapScaleCapture"],
+        ["src.tasks.localization.MinimapPositionRecorder", "MinimapPositionRecorder"],
+        ["src.tasks.localization.MinimapTurnToHeading", "MinimapTurnToHeading"],
+        ["src.tasks.navigation.MinimapNavigateToPoint", "MinimapNavigateToPoint"],
         ["src.tasks.test.TestArrowAngle", "TestArrowAngle"],
         ["src.tasks.test.TestCircularPulseDetect", "TestCircularPulseDetect"],
         ["src.tasks.test.TeamCompositionDetectTask", "TeamCompositionDetectTask"],
