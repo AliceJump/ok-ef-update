@@ -26,12 +26,14 @@ from src.tasks.onetime.CreditShopTask import CreditShopTask
 from src.tasks.onetime.DailyBattleTask import DailyBattleTask
 from src.tasks.onetime.DailyDeliveryTask import DailyDeliveryTask
 from src.tasks.onetime.DailyRewardTask import DailyRewardTask
+from src.tasks.onetime.DailyYingTuoTask import DailyYingTuoTask
 from src.tasks.onetime.DeliverySendTask import DeliverySendTask
 from src.tasks.onetime.DemoBattleTask import DemoBattleTask
 from src.tasks.onetime.FarmRelatedTask import FarmRelatedTask
 from src.tasks.onetime.HomePointTask import HomePointTask
 from src.tasks.onetime.LiaisonGiftTask import LiaisonGiftTask
 from src.tasks.onetime.MailTask import MailTask
+from src.tasks.onetime.MatrixCleanTask import MatrixCleanTask
 from src.tasks.onetime.RegionalBuildTask import RegionalBuildTask
 
 
@@ -65,8 +67,16 @@ class DailyTask(Common, EndCommandMixin, AccountMixin):
     CFG_TAIL_TASKS: ClassVar[str] = "收尾任务"
 
     BOAT_TASKS: ClassVar[list[str]] = ["送礼", "帝江号整理", "帝江号收菜"]
-    OTHER_TASKS: ClassVar[list[str]] = ["收邮件", "转交运送委托", "地区建设", "造装备", "收信用", "买信用商店"]
-    BATTLE_TASKS: ClassVar[list[str]] = ["刷体力", "演算"]
+    OTHER_TASKS: ClassVar[list[str]] = [
+        "收邮件",
+        "清理基质",
+        "转交运送委托",
+        "地区建设",
+        "造装备",
+        "收信用",
+        "买信用商店",
+    ]
+    BATTLE_TASKS: ClassVar[list[str]] = ["刷体力", "演算", "影拓丰碑"]
     REWARD_TASKS: ClassVar[list[str]] = ["活动奖励", "日常奖励"]
     FARM_TASKS: ClassVar[list[str]] = ["农牧相关"]
     DELIVERY_TASKS: ClassVar[list[str]] = ["自动送货"]
@@ -77,6 +87,7 @@ class DailyTask(Common, EndCommandMixin, AccountMixin):
         "帝江号整理": "⭐帝江号整理",
         "帝江号收菜": "⭐帝江号收菜",
         "收邮件": "⭐收邮件",
+        "清理基质": "⭐清理基质",
         "转交运送委托": "⭐转交运送委托",
         "地区建设": "⭐地区建设",
         "造装备": "⭐造装备",
@@ -84,6 +95,7 @@ class DailyTask(Common, EndCommandMixin, AccountMixin):
         "买信用商店": "⭐买信用商店",
         "刷体力": "⭐刷体力",
         "演算": "⭐演算",
+        "影拓丰碑": "⭐影拓丰碑",
         "活动奖励": "⭐活动奖励",
         "日常奖励": "⭐日常奖励",
         "农牧相关": "⭐农牧相关",
@@ -93,6 +105,8 @@ class DailyTask(Common, EndCommandMixin, AccountMixin):
 
     _LEGACY_DEFAULTS: ClassVar[dict[str, bool]] = {
         **dict.fromkeys(BOAT_TASKS + OTHER_TASKS + BATTLE_TASKS + REWARD_TASKS + FARM_TASKS, True),
+        # 清理基质会分解库存，默认关闭，仅用户主动勾选后执行
+        "清理基质": False,
         "自动送货": False,
         "传送到帝江号右侧传送点": True,
     }
@@ -109,6 +123,7 @@ class DailyTask(Common, EndCommandMixin, AccountMixin):
         CFG_OTHER_TASKS: _legacy_daily_task_list(
             [
                 ("收邮件", "⭐收邮件"),
+                ("清理基质", "⭐清理基质"),
                 ("转交运送委托", "⭐转交运送委托"),
                 ("地区建设", "⭐地区建设"),
                 ("造装备", "⭐造装备"),
@@ -118,7 +133,7 @@ class DailyTask(Common, EndCommandMixin, AccountMixin):
             _LEGACY_DEFAULTS,
         ),
         CFG_BATTLE_TASKS: _legacy_daily_task_list(
-            [("刷体力", "⭐刷体力"), ("演算", "⭐演算")],
+            [("刷体力", "⭐刷体力"), ("演算", "⭐演算"), ("影拓丰碑", "⭐影拓丰碑")],
             _LEGACY_DEFAULTS,
         ),
         CFG_REWARD_TASKS: _legacy_daily_task_list(
@@ -210,6 +225,13 @@ class DailyTask(Common, EndCommandMixin, AccountMixin):
             run_method="run_mail",
             predicate=lambda: self._task_selected(self.CFG_OTHER_TASKS, "收邮件"),
         )
+        self.matrix_clean_feature = DailyFeature(
+            self,
+            MatrixCleanTask,
+            switch_key="⭐清理基质",
+            run_method="clean_matrix",
+            predicate=lambda: self._task_selected(self.CFG_OTHER_TASKS, "清理基质"),
+        )
         self.delivery_send_feature = DailyFeature(
             self,
             DeliverySendTask,
@@ -292,6 +314,12 @@ class DailyTask(Common, EndCommandMixin, AccountMixin):
             run_method="battle_demo",
             predicate=lambda: self._task_selected(self.CFG_BATTLE_TASKS, "演算"),
         )
+        self.yingtuo_feature = DailyFeature(
+            self,
+            DailyYingTuoTask,
+            switch_key="⭐影拓丰碑",
+            predicate=lambda: self._task_selected(self.CFG_BATTLE_TASKS, "影拓丰碑"),
+        )
         self.home_point_feature = DailyFeature(
             self,
             HomePointTask,
@@ -304,7 +332,7 @@ class DailyTask(Common, EndCommandMixin, AccountMixin):
             {
                 self.CFG_BOAT_TASKS: "选择参加一键日常的帝江号任务；执行顺序固定为送礼、帝江号整理、帝江号收菜。",
                 self.CFG_OTHER_TASKS: "选择参加一键日常的其他任务；顺序由程序固定，避免打散可复用的场景状态。",
-                self.CFG_BATTLE_TASKS: "选择参加一键日常的战斗任务；刷体力与演算连续执行。",
+                self.CFG_BATTLE_TASKS: "选择参加一键日常的战斗任务；刷体力、演算与影拓丰碑连续执行。",
                 self.CFG_REWARD_TASKS: "选择参加一键日常的奖励任务；奖励块固定安排在普通业务任务之后。",
                 self.CFG_FARM_TASKS: "农牧领取单独成块，固定安排在奖励之后、自动送货之前执行。",
                 self.CFG_DELIVERY_TASKS: "自动送货是高风险长流程，固定在农牧与奖励之后、最终归位之前执行。",
@@ -315,6 +343,7 @@ class DailyTask(Common, EndCommandMixin, AccountMixin):
                     "任务开始时候，角色不能位于「帝江号/剑桥」传送点附近。"
                 ),
                 "⭐收邮件": "是否前往「邮箱」领取邮件。",
+                "⭐清理基质": "是否前往「贵重品库/武器基质」分解全部可分解基质，直到无可分解。",
                 "⭐转交运送委托": ("是否在「地区建设/仓储结点」中转交全部运送委托，并领取一次转交委托奖励。"),
                 "⭐自动送货": "是否执行自动接取并完成运输委托。",
                 "⭐造装备": (
@@ -346,7 +375,8 @@ class DailyTask(Common, EndCommandMixin, AccountMixin):
         self.default_config.update(
             {
                 self.CFG_BOAT_TASKS: list(self.BOAT_TASKS),
-                self.CFG_OTHER_TASKS: list(self.OTHER_TASKS),
+                # 清理基质默认不勾选：分解不可回滚，须用户主动开启
+                self.CFG_OTHER_TASKS: [task for task in self.OTHER_TASKS if task != "清理基质"],
                 self.CFG_BATTLE_TASKS: list(self.BATTLE_TASKS),
                 self.CFG_REWARD_TASKS: list(self.REWARD_TASKS),
                 self.CFG_FARM_TASKS: list(self.FARM_TASKS),
@@ -422,6 +452,7 @@ class DailyTask(Common, EndCommandMixin, AccountMixin):
             self.organize_feature.plan_item(),
             self.harvest_feature.plan_item(),
             self.mail_feature.plan_item(),
+            self.matrix_clean_feature.plan_item(),
             self.delivery_send_feature.plan_item(),
             self.regional_feature.plan_item(),
             self.craft_feature.plan_item(),
@@ -429,6 +460,7 @@ class DailyTask(Common, EndCommandMixin, AccountMixin):
             self.shop_feature.plan_item(),
             self.battle_feature.plan_item(),
             self.demo_feature.plan_item(),
+            self.yingtuo_feature.plan_item(),
             self.activity_feature.plan_item(),
             self.daily_reward_feature.plan_item(),
             self.farm_feature.plan_item(),

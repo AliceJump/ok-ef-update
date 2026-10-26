@@ -657,10 +657,13 @@ def reorganize_tasks_architecture(executor: Any) -> None:
         "BoatOrganizeTask": "帝江号",
         "LiaisonGiftTask": "帝江号",
         "MailTask": "其他",
+        "MatrixCleanTask": "其他",
         "DeliverySendTask": "其他",
         "RegionalBuildTask": "其他",
         "CraftWeaponTask": "其他",
         "WarehouseTransferTask": "收尾",
+        # 清理基质的独立单次运行入口：与一条龙勾选行分属两个页签
+        "MatrixCleanOnceTask": "收尾",
         "CreditCollectTask": "其他",
         "CreditShopTask": "其他",
         # 独立「自动送货」不在一条龙清单内（清单里的自动送货由 DailyDeliveryTask 执行）
@@ -669,6 +672,7 @@ def reorganize_tasks_architecture(executor: Any) -> None:
         "TakeDeliveryTask": "收尾",
         "DailyBattleTask": "战斗",
         "DemoBattleTask": "战斗",
+        "DailyYingTuoTask": "战斗",
         "ActivityRewardTask": "奖励",
         "DailyRewardTask": "奖励",
         # 农牧领取按一条龙执行顺序排在自动送货之前，行序见 _endfield_refresh_ui 的 roster 排序
@@ -1027,6 +1031,16 @@ def install_endfield_theme_patch() -> None:
                 workspaces.append(workspace)
 
             self._endfield_workspaces = workspaces
+
+            # 导航底部放运行控制区：任何页面都能启动游戏、开始一条龙；页眉按钮保留原位
+            daily = next((ws for ws in workspaces if ws.category_code == "DAILY"), None)
+            if daily is not None:
+                from src.gui.EndfieldRunDock import EndfieldRunDock
+
+                self._endfield_run_dock = EndfieldRunDock(daily)
+                navigation.addWidget(
+                    "endfield_run_dock", self._endfield_run_dock, position=NavigationItemPosition.BOTTOM
+                )
 
             # 注入智能路由跳转：如果外部逻辑调用 switchTo(sub_tab)，自动路由至对应工作区并切换顶栏标签
             for ws in workspaces:

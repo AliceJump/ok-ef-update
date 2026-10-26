@@ -6,7 +6,7 @@ from src.core.email_config import email_config_option
 from src.interaction.EfInteraction import EfInteraction
 from src.tasks.daily.finally_file import decode
 
-version = "v2.0.3"
+version = "v2.0.4"
 
 
 # 不需要修改version, Github Action打包会自动修改
@@ -134,6 +134,7 @@ config = {
         ["src.tasks.onetime.BoatOrganizeTask", "BoatOrganizeTask"],
         ["src.tasks.onetime.BoatHarvestTask", "BoatHarvestTask"],
         ["src.tasks.onetime.MailTask", "MailTask"],
+        ["src.tasks.onetime.MatrixCleanTask", "MatrixCleanTask"],
         ["src.tasks.onetime.DeliverySendTask", "DeliverySendTask"],
         ["src.tasks.onetime.RegionalBuildTask", "RegionalBuildTask"],
         ["src.tasks.onetime.CraftWeaponTask", "CraftWeaponTask"],
@@ -141,6 +142,7 @@ config = {
         ["src.tasks.onetime.CreditShopTask", "CreditShopTask"],
         ["src.tasks.onetime.DailyBattleTask", "DailyBattleTask"],
         ["src.tasks.onetime.DemoBattleTask", "DemoBattleTask"],
+        ["src.tasks.onetime.DailyYingTuoTask", "DailyYingTuoTask"],
         ["src.tasks.onetime.ActivityRewardTask", "ActivityRewardTask"],
         ["src.tasks.onetime.DailyRewardTask", "DailyRewardTask"],
         ["src.tasks.onetime.DailyDeliveryTask", "DailyDeliveryTask"],
@@ -148,6 +150,7 @@ config = {
         # 其他一次性业务任务
         ["src.tasks.onetime.TakeDeliveryTask", "TakeDeliveryTask"],
         ["src.tasks.onetime.WarehouseTransferTask", "WarehouseTransferTask"],
+        ["src.tasks.onetime.MatrixCleanTask", "MatrixCleanOnceTask"],
         ["src.tasks.onetime.DeliveryTask", "DeliveryTask"],
         ["src.tasks.onetime.BattleTask", "BattleTask"],
         ["src.tasks.onetime.DemoDrawTask", "DemoDrawTask"],

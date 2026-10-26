@@ -3787,3 +3787,63 @@ msgstr ""
 "Switch within this distance of an intermediate waypoint only when the next "
 "waypoint is directly reachable; otherwise keep approaching the current "
 "waypoint (m)"
+
+msgid "启动游戏"
+msgstr "Start Game"
+
+msgid "启动中…"
+msgstr "Starting…"
+
+msgid "游戏已连接"
+msgstr "Game Connected"
+
+msgid "日常影拓丰碑"
+msgstr "Daily Yingtuo Monument"
+
+msgid "一键日常专用，配置独立于「影拓丰碑」。"
+msgstr "For Daily Tasks, with settings separate from Yingtuo Monument."
+
+msgid "⭐领取影拓丰碑奖励"
+msgstr "⭐Claim Yingtuo Monument Rewards"
+
+msgid "先完成最左侧海报（当期活动）的普通关卡和苦难任务，再挑战其余海报的普通关卡"
+msgstr ""
+"Complete normal stages and hardship tasks for the leftmost poster (current "
+"event), then challenge normal stages on the remaining posters."
+
+msgid "选择参加一键日常的战斗任务；刷体力、演算与影拓丰碑连续执行。"
+msgstr ""
+"Choose Daily Tasks combat activities; stamina farming, computation and "
+"Yingtuo Monument run consecutively."
+
+msgid ""
+"在「活动中心」领取影拓丰碑的活动奖励。\n"
+"关闭后只跳过领奖，关卡和苦难任务照常完成。"
+msgstr ""
+"Claim Yingtuo Monument rewards in the Event Center.\n"
+"When off, only reward claiming is skipped; stages and hardship tasks still run."
+
+msgid ""
+"在「活动中心」领奖；活动任务全部完成后跳过本任务。\n"
+"关闭后不领奖，每次都挑战全部海报。"
+msgstr ""
+"Claim rewards in the Event Center; skip this task once all event tasks are done.\n"
+"When off, no rewards are claimed and all posters are challenged every time."
+
+msgid "清理基质"
+msgstr "Clean Matrices"
+
+msgid "⭐清理基质"
+msgstr "⭐Clean Matrices"
+
+msgid ""
+"前往「贵重品库/武器基质」分解全部可分解基质，直到无可分解。\n"
+"分解产出基建材料与调度券。"
+msgstr ""
+"Open Valuables / Weapon Matrices and dismantle all eligible matrices until none remain.\n"
+"Dismantling yields infrastructure materials and dispatch tickets."
+
+msgid "是否前往「贵重品库/武器基质」分解全部可分解基质，直到无可分解。"
+msgstr ""
+"Whether to open Valuables / Weapon Matrices and dismantle all eligible "
+"matrices."
