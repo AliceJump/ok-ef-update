@@ -29,6 +29,7 @@ if TYPE_CHECKING:
         ImageCaptureMethod,
         NemuIpcCaptureMethod,
         WindowsGraphicsCaptureMethod,
+        WindowsGraphicsCaptureHDRMethod,
     )
     from ok.device.interaction import (
         BaseInteraction,
@@ -66,7 +67,6 @@ if TYPE_CHECKING:
         WaitFailedException,
     )
     from ok.task.task import BaseTask, FindFeature, OCR, TriggerTask
-    from ok.task.web import WebCustomTab, WebTabConfig, task_tab_action, task_tab_query
     from ok.util.Analytics import Analytics
     from ok.util.GlobalConfig import (GlobalConfig, register_app_launcher_options,
                                       register_basic_options, register_notification_options)
@@ -125,6 +125,7 @@ _LAZY_IMPORTS = {
     'BrowserCaptureMethod': ('ok.device.capture', 'BrowserCaptureMethod'),
     'ADBCaptureMethod': ('ok.device.capture', 'ADBCaptureMethod'),
     'WindowsGraphicsCaptureMethod': ('ok.device.capture', 'WindowsGraphicsCaptureMethod'),
+    'WindowsGraphicsCaptureHDRMethod': ('ok.device.capture', 'WindowsGraphicsCaptureHDRMethod'),
     'BitBltCaptureMethod': ('ok.device.capture', 'BitBltCaptureMethod'),
     'NemuIpcCaptureMethod': ('ok.device.capture', 'NemuIpcCaptureMethod'),
     'DesktopDuplicationCaptureMethod': ('ok.device.capture', 'DesktopDuplicationCaptureMethod'),
@@ -132,10 +133,6 @@ _LAZY_IMPORTS = {
     'DiagnosisTask': ('ok.task.DiagnosisTask', 'DiagnosisTask'),
     'BaseTask': ('ok.task.task', 'BaseTask'),
     'TriggerTask': ('ok.task.task', 'TriggerTask'),
-    'WebTabConfig': ('ok.task.web', 'WebTabConfig'),
-    'WebCustomTab': ('ok.task.web', 'WebCustomTab'),
-    'task_tab_action': ('ok.task.web', 'task_tab_action'),
-    'task_tab_query': ('ok.task.web', 'task_tab_query'),
     'FindFeature': ('ok.task.task', 'FindFeature'),
     'OCR': ('ok.task.task', 'OCR'),
     'Feature': ('ok.feature.Feature', 'Feature'),
@@ -161,7 +158,6 @@ _LAZY_IMPORTS = {
     'calculate_color_percentage': ('ok.util.color', 'calculate_color_percentage'),
     'get_mask_in_color_range': ('ok.util.color', 'get_mask_in_color_range'),
     'is_pure_black': ('ok.util.color', 'is_pure_black'),
-    'run_web': ('ok.ui.web.server', 'run_web'),
 }
 
 __all__ = [
@@ -221,7 +217,7 @@ _OK_CONFIG_DEFAULTS = {
 
 
 def _create_ok_config(config):
-    """Load UI state once for both the Qt and headless/web facades."""
+    """Load UI state once for both the Qt and headless facades."""
     from ok.util.config import Config
 
     defaults = dict(_OK_CONFIG_DEFAULTS)
@@ -231,15 +227,35 @@ def _create_ok_config(config):
 
 
 class _OverlayConfigMixin:
+    def _blur_enabled(self):
+        executor = getattr(og, 'executor', None)
+        return (callable(self.config.get('blur_area'))
+                and bool(getattr(executor, 'basic_options', {}).get('Enable Blur', False)))
+
+    def _overlay_needed(self):
+        return self.ok_config.get('use_overlay', False) or self._blur_enabled()
+
     def overlay_state(self):
         return {'boxes': bool(self.ok_config.get('use_overlay', False))}
 
     def initialize_overlay(self):
         """Apply persisted overlay state independently of the active UI."""
-        if self.ok_config.get('use_overlay', False):
+        if self._overlay_needed():
             overlay = self.get_overlay_view()
             if overlay is not None:
-                overlay.set_boxes_enabled(True)
+                overlay.set_boxes_enabled(self.ok_config.get('use_overlay', False))
+
+    def _on_blur_patches(self, patches):
+        # A live setting change can enable blur without a new window geometry event.
+        # The new overlay does not receive the signal currently being dispatched.
+        if self._blur_enabled() and self.overlay_window is None:
+            overlay = self.get_overlay_view()
+            if overlay is not None:
+                overlay.update_blur_patches(patches)
+
+    def _on_clear_blur_patches(self):
+        if not self._overlay_needed() and self.overlay_window is not None:
+            self._close_overlay(wait=False)
 
     def _close_overlay(self, wait=True):
         overlay = self.overlay_window
@@ -269,7 +285,7 @@ class _OverlayConfigMixin:
         overlay = self.overlay_window
         if name == 'boxes' and value:
             overlay = self.get_overlay_view()
-        elif name == 'boxes' and not value and overlay is not None:
+        elif name == 'boxes' and not value and overlay is not None and not self._blur_enabled():
             self._close_overlay()
             return self.overlay_state()
         if overlay is not None:
@@ -301,6 +317,8 @@ class App(_OverlayConfigMixin):
             task_executor.load_tr()
         self.ok_config = _create_ok_config(config)
         communicate.quit.connect(self.quit)
+        communicate.blur_overlay.connect(self._on_blur_patches)
+        communicate.clear_blur_overlay.connect(self._on_clear_blur_patches)
 
         self.about = self.config.get('about')
         self.title = self.config.get('gui_title')
@@ -341,6 +359,9 @@ class App(_OverlayConfigMixin):
         logger.debug('init app end')
 
     def quit(self):
+        from ok.core.events import communicate
+        communicate.blur_overlay.disconnect(self._on_blur_patches)
+        communicate.clear_blur_overlay.disconnect(self._on_clear_blur_patches)
         self.exit_event.set()
         self._close_overlay(wait=False)
         self._close_device_manager()
@@ -412,10 +433,8 @@ class App(_OverlayConfigMixin):
         self.show_message_window(title, content)
 
     def update_overlay(self, visible, x, y, window_width, window_height, width, height, scaling):
-        if not self.ok_config.get('use_overlay', False):
-            # Treat the setting as an absolute lifecycle gate. In particular,
-            # a configured blur callback must not resurrect a disabled native
-            # window (and its input/expiry workers).
+        if not self._overlay_needed():
+            # Keep the native window only while debug boxes or UID blur need it.
             if self.overlay_window is not None:
                 self._close_overlay(wait=False)
             return
@@ -427,7 +446,7 @@ class App(_OverlayConfigMixin):
 
     def get_overlay_view(self):
         """Return the overlay widget exposed to tasks, custom tabs, and my_app."""
-        if not self.ok_config.get('use_overlay', False):
+        if not self._overlay_needed():
             return None
         if self.overlay_window is None:
             from ok.core.events import communicate
@@ -515,6 +534,8 @@ class HeadlessApp(_OverlayConfigMixin):
         self.to_translate = None
         communicate.quit.connect(self.quit)
         communicate.adb_devices.connect(self.sync_overlay_source)
+        communicate.blur_overlay.connect(self._on_blur_patches)
+        communicate.clear_blur_overlay.connect(self._on_clear_blur_patches)
 
         self.locale = LocaleName(config.get("locale", "en_US"))
         from ok.core.start_controller import StartController
@@ -523,14 +544,9 @@ class HeadlessApp(_OverlayConfigMixin):
         self.notification_manager = None
         if task_executor is not None:
             from ok.notification import NotificationManager
-            ui_config = resolve_ui_config(config)
-            is_web = (config.get('web_runtime')
-                      or (ui_config is not None and ui_config['type'] == 'web'))
-            notification_kwargs = {'system_notifier': None} if is_web else {}
             self.notification_manager = NotificationManager(
                 self.global_config, task_executor, exit_event,
-                app_name=config.get('gui_title'), app_icon=config.get('gui_icon'),
-                **notification_kwargs)
+                app_name=config.get('gui_title'), app_icon=config.get('gui_icon'))
         communicate.notification.connect(self.show_notification)
 
         og.app = self
@@ -562,6 +578,8 @@ class HeadlessApp(_OverlayConfigMixin):
         from ok.core.events import communicate
         communicate.adb_devices.disconnect(self.sync_overlay_source)
         communicate.notification.disconnect(self.show_notification)
+        communicate.blur_overlay.disconnect(self._on_blur_patches)
+        communicate.clear_blur_overlay.disconnect(self._on_clear_blur_patches)
         if self.notification_manager is not None:
             self.notification_manager.stop()
         if self.exit_event:
@@ -581,7 +599,7 @@ class HeadlessApp(_OverlayConfigMixin):
             self.notification_manager.submit(translated_title, translated_message, images)
 
     def get_overlay_view(self):
-        if not self.ok_config.get('use_overlay', False):
+        if not self._overlay_needed():
             return None
         if self.overlay_window is None:
             from ok.core.events import communicate
@@ -637,11 +655,6 @@ class OK:
         from ok.util.config import Config
 
         self.config = config
-        ui_config = resolve_ui_config(config)
-        if ui_config is not None and ui_config["type"] == "web":
-            from ok.ui.web.requirements import check_web_requirements
-            check_web_requirements()
-
         check_mutex_fn = _resolve('check_mutex')
         config_logger_fn = _resolve('config_logger')
         global_config_class = _resolve('GlobalConfig')
@@ -652,8 +665,11 @@ class OK:
         default_start_method = _resolve('WINDOWS_START_METHOD_START')
         wgc_available = _resolve('windows_graphics_available')
 
+        self.args = parse_arguments()
+        use_gui = resolve_ui_config(config) is not None and not self.args.get('headless', False)
         if config.get('check_mutex', True):
-            if not check_mutex_fn():
+            acquired = check_mutex_fn(gui=True) if use_gui else check_mutex_fn()
+            if not acquired:
                 raise RuntimeError(
                     'Another application instance is still running and could not be stopped safely.')
         og.ok = self
@@ -667,15 +683,17 @@ class OK:
         config['debug'] = config.get("debug", False)
         self.debug = config['debug']
         config_logger_fn(self.config)
+        from ok.core.plugin_staging import apply_pending_plugin_changes
+        self.plugin_change_results = apply_pending_plugin_changes()
         logger.info(f"ok-script init {config.get('version')}, {sys.argv}, pid={os.getpid()} config: {config}")
         if self.debug:
             logger.debug(f"environment contains {len(os.environ)} entries")
         pyappify.logger = logger
         logger.info(
             f"pyappify  app_version:{pyappify.app_version}, app_profile:{pyappify.app_profile}, pyappify_version:{pyappify.pyappify_version} pyappify_upgradeable:{pyappify.pyappify_upgradeable}, pyappify_executable:{pyappify.pyappify_executable}")
-        self.args = parse_arguments()
         self._runtime_start_lock = threading.Lock()
         self._runtime_started = False
+        self._mcp_server = None
         self.task_executor = None
         self._app = None
         self._headless_app = None
@@ -687,7 +705,7 @@ class OK:
             capture_methods = windows_config.get('capture_method', [])
             available_methods = []
             for method in capture_methods:
-                if method == 'WGC':
+                if method in ('WGC', 'WGC_HDR'):
                     if wgc_available():
                         available_methods.append(method)
                 else:
@@ -737,15 +755,8 @@ class OK:
     def start(self):
         logger.info(f'OK start id:{id(self)} pid:{os.getpid()}')
         try:
+            self.start_mcp_server()
             ui_config = resolve_ui_config(self.config)
-            if ui_config is not None and ui_config["type"] == "web":
-                from ok.ui.web.server import run_web
-                return run_web(
-                    self.config,
-                    open_browser=ui_config["launch_mode"] != "server",
-                    launch_mode=ui_config["launch_mode"],
-                    ok_instance=self,
-                )
             use_gui = (ui_config is not None and ui_config["type"] == "qt"
                        and not self.args.get('headless', False))
             task_arg = self.args.get('task', 0)
@@ -759,7 +770,8 @@ class OK:
                 logger.debug('start app.exec()')
                 self.app.exec()
             else:
-                self.task_executor.start()
+                if self._mcp_server is None:
+                    self.task_executor.start()
                 try:
                     task_thread = threading.Thread(target=self.wait_task)
                     task_thread.start()
@@ -778,12 +790,54 @@ class OK:
             if self._app or self._headless_app:
                 self.quit()
 
+    def start_mcp_server(self):
+        """Start the optional localhost bridge after runtime initialization."""
+        from ok.util.GlobalConfig import ENABLE_MCP_SERVER, basic_options
+        config = self.config.get('mcp') or {}
+        enabled = (config.get('enabled', False)
+                   or self.global_config.get_config(basic_options).get(ENABLE_MCP_SERVER, False))
+        if not enabled or self._mcp_server is not None:
+            return
+        from ok.core.mcp_server import LocalMcpServer
+        server = LocalMcpServer(self, config)
+        server.start()
+        self._mcp_server = server
+
+    def stop_mcp_server(self):
+        """Stop only this runtime's MCP server, leaving the application running."""
+        server = self._mcp_server
+        if server is None:
+            return
+        server.stop()
+        server.join()
+        if server._thread is not None and server._thread.is_alive():
+            raise RuntimeError('MCP server is still stopping; try again shortly')
+        self._mcp_server = None
+
+    def set_mcp_enabled(self, enabled):
+        """Apply a confirmed GUI preference immediately and persist on success."""
+        from ok.util.GlobalConfig import ENABLE_MCP_SERVER, basic_options
+        previous = self.config.get('mcp')
+        self.config['mcp'] = {**(previous or {}), 'enabled': enabled}
+        try:
+            if enabled:
+                self.start_mcp_server()
+            else:
+                self.stop_mcp_server()
+        except Exception:
+            if previous is None:
+                self.config.pop('mcp', None)
+            else:
+                self.config['mcp'] = previous
+            raise
+        self.global_config.get_config(basic_options)[ENABLE_MCP_SERVER] = enabled
+
     def start_runtime(self):
         """Start UI-independent runtime initialization exactly once.
 
-        Qt calls this after its main window is visible, while the web adapter
-        calls it from the ASGI lifespan. Device discovery and configured
-        automatic startup therefore have one owner in the core runtime.
+        Qt calls this after its main window is visible. Device discovery and
+        configured automatic startup therefore have one owner in the core
+        runtime.
         """
         with self._runtime_start_lock:
             if self._runtime_started:
@@ -1016,7 +1070,8 @@ class OK:
                                           default_threshold=template_matching.get('default_threshold', 0.8),
                                           feature_processor=template_matching.get('feature_processor'),
                                           hcenter_features=template_matching.get('hcenter_features'),
-                                          vcenter_features=template_matching.get('vcenter_features'))
+                                          vcenter_features=template_matching.get('vcenter_features'),
+                                          template_folder=template_matching.get('template_folder', os.path.join('assets', 'templates')))
         ocr_target_height = 0
         if ocr := self.config.get('ocr'):
             isascii, path = install_path_isascii()
@@ -1038,16 +1093,6 @@ class OK:
                                           global_config=self.global_config, ocr_target_height=ocr_target_height,
                                           config=self.config)
         onetime_tasks = list(self.config.get('onetime_tasks', []))
-        ui_config = resolve_ui_config(self.config)
-        if ((ui_config is not None and ui_config["type"] == "web")
-                or self.config.get("web_runtime", False)):
-            from ok.task.web import configured_web_custom_tabs
-            existing = {tuple(task[:2]) for task in onetime_tasks
-                        if isinstance(task, (list, tuple)) and len(task) >= 2}
-            for web_task in configured_web_custom_tabs(self.config.get('web_tabs', [])):
-                if tuple(web_task) not in existing:
-                    onetime_tasks.append(web_task)
-                    existing.add(tuple(web_task))
         if self.should_init_task_manager_headless():
             from ok.core.task_manager import TaskManager
         else:
@@ -1100,6 +1145,8 @@ class OK:
 
     def quit(self):
         logger.info('quit app')
+        if getattr(self, '_mcp_server', None) is not None:
+            self._mcp_server.stop()
         self.exit_event.set()
         if self._app:
             self._app.quit()

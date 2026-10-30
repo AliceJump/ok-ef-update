@@ -5,9 +5,15 @@ from ok import Box, TaskDisabledException
 from src.data.FeatureList import FeatureList as fL
 from src.icons import Icons
 from src.image.gray_bar_detector import detect_gray_bars
-from src.image.yingtuo_poster_template import crop_poster_template, matches_entered_template, nearby_poster_templates, poster_view_changed
 from src.image.reward_card_probe import CARD_CLAIMABLE, CARD_CLAIMED, CARD_UNFINISHED, card_state
+from src.image.yingtuo_poster_template import (
+    crop_poster_template,
+    matches_entered_template,
+    nearby_poster_templates,
+    poster_view_changed,
+)
 from src.tasks.mixin.battle_mixin import BattleMixin
+from src.tasks.mixin.search_mixin import SearchMixin
 
 
 def _settled(read):
@@ -31,7 +37,13 @@ class YingTuoError(Exception):
     """画面没有按预期切换。run() 捕获它、记失败并返回 False，一键日常的后续任务照常执行。"""
 
 
-class YingTuoTask(BattleMixin):
+class YingTuoTask(SearchMixin, BattleMixin):
+    """影拓丰碑。
+
+    需要 ``SearchMixin`` 提供 ``strafe_search``：当期第一关入场即开战，其余海报的关卡
+    仍要按 W 走位找到触碰点再按 F 才会开战（见 ``battle_and_exit``）。
+    """
+
     CFG_CLAIM_REWARD: ClassVar[str] = "⭐领取影拓丰碑奖励"
     # 领奖开启且活动任务已全部完成时跳过整个任务；独立任务仍挑战其余海报，一键日常版跳过。
     SKIP_WHEN_ACTIVITY_DONE: ClassVar[bool] = False
@@ -639,7 +651,9 @@ class YingTuoTask(BattleMixin):
             group = nearby_poster_templates(candidates, frame_width)
             self._entered_poster_templates.extend(group)
             self._last_normal_attempt_recorded = True
-            self.log_info(f"选中第一条灰条，立即记录 {len(group)} 张相邻海报模板（本轮累计 {len(self._entered_poster_templates)} 张）")
+            self.log_info(
+                f"选中第一条灰条，立即记录 {len(group)} 张相邻海报模板（本轮累计 {len(self._entered_poster_templates)} 张）"
+            )
             self._click_bar_until_detail(leftmost_bar, frame_height, frame_width)
             return True
         self.log_info("连续 4 次滚动未发现本轮可进入的灰条组合")
@@ -745,28 +759,9 @@ class YingTuoTask(BattleMixin):
     def battle_and_exit(self, transition_recovery=None):
         if not self.wait_battle_space(transition_recovery=transition_recovery):
             return False
-        # 本轮已尝试模板在点击灰条时就已记录，进入战斗不重复登记。
-        def challenge_state():
-            self.next_frame()
-            if self.in_combat():
-                return "combat"
-            return self.ocr(match=self.lang.daily_battle_mixin.k_4cc61900, box=self.box.bottom_right)
 
-        # 入场只表示加载完成；后续关卡可能还要靠近触碰点并交互才会开战。
-        state = self.strafe_search(challenge_state, keys=("w",), duration=0.25, passes=None, time_out=60)
-        if not state:
-            self.log_info("未找到挑战触碰点")
+        if not self.start_touch_challenge():  # 共用光点搜索与开战确认，入场时不重复登记模板
             return False
-        if state != "combat":
-            self.press_key("f")
-
-            def challenge_started():
-                self.next_frame()
-                return self.in_combat()
-
-            if not self.wait_until(challenge_started, time_out=10, raise_if_not_found=False):
-                self.log_info("触碰后挑战未启动")
-                return False
         if not self.auto_battle():
             return False
         if not self.wait_click_feature(
