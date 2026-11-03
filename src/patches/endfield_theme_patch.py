@@ -71,6 +71,8 @@ def _widget_scope_override_qss(dark: bool) -> str:
     text_sub = colors["muted"]
     accent, accent_ink = colors["accent"], colors["on_accent"]
     signal, on_signal = colors["signal"], colors["on_signal"]
+    # 字体颜色取按钮底色相对颜色
+    status_ink = colors["on_go"] if dark else text_main
     return f"""
 Card, EmptyCard {{
     background: transparent !important;
@@ -142,6 +144,10 @@ QLabel#workspaceEyebrow, QLabel#bannerCode, QLabel#drawerEyebrow, QLabel#checkpo
 }}
 QLabel#workspaceEyebrow, QLabel#bannerCode, QLabel#drawerEyebrow {{
     color: {text_sub}; font-size: 11px; font-weight: 600;
+}}
+/* 实时任务状态条：修复白底白字按钮 */
+StatusBar QLabel#titleLabel {{
+    color: {status_ink} !important;
 }}
 PushButton, PrimaryPushButton, ToolButton, ComboBox, LineEdit, SpinBox, DoubleSpinBox {{
     border-radius: 0px;
@@ -574,6 +580,7 @@ NATIVE_TAB_KEYS = {
     "EndfieldCombatTab": "自动战斗",
     "StartTab": "截图方式",
     "TriggerTaskTab": "大世界",
+    "OneTimeTaskTab": "任务",
     "DebugTab": "调试",
     "RunCodeTab": "运行代码",
     "EditTaskTab": "脚本",
@@ -625,7 +632,7 @@ def route_endfield_tabs(
             code = "DAILY"
         elif key in ENDFIELD_COMBAT_TAB_ORDER:
             code = "COMBAT"
-        # 其余归为系统与环境 (截图方式, 全局配置, 账号配置, 通知, 设置, 关于)
+        # 其余归为系统与环境 (截图方式, 全局配置, 账号配置, 任务, 测试, 通知, 设置, 关于)
         else:
             code = "ENVIRONMENT"
         routed[code].append((key, label, item["icon"], widget))
@@ -661,6 +668,7 @@ def reorganize_tasks_architecture(executor: Any) -> None:
         "MatrixCleanTask": "其他",
         "DeliverySendTask": "其他",
         "RegionalBuildTask": "其他",
+        "EnvironmentMonitoringPhotoTask": "其他",
         "CraftWeaponTask": "其他",
         "WarehouseTransferTask": "收尾",
         # 清理基质的独立单次运行入口：与一条龙勾选行分属两个页签
