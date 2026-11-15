@@ -407,6 +407,15 @@ class EnvironmentMonitoringModule(_LangModuleBaseT):
     observant_fowlbeast: str
     """东张西望"""
 
+    glowing_lankybeast: str
+    """肚子鼓气后发光的吐虫长股兽"""
+
+    withered_branches: str
+    """枯枝"""
+
+    water_lantern_bug: str
+    """水灯虫"""
+
     peach_tree: str
     """桃树"""
 

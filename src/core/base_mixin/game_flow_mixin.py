@@ -578,24 +578,45 @@ class GameFlowMixin:
             target_area: 目标区域。
 
         Returns:
-            bool | None: 成功时返回 True，未命中时返回 None。
+            bool: 确认目标地区时返回 True，否则返回 False。
         """
-        if result := self.wait_ocr(
-            match=[get_world_map_matcher(self.lang, area) for area in areas_list],
-            box=self.box_of_screen(0, 960 / 1080, 260 / 1920, 1),
-            time_out=5,
-        ):
-            expected_target_text = get_world_map_text(self.lang, target_area)
-            if expected_target_text in result[0].name or target_area in result[0].name:
-                return True
-            else:
-                self.click(result[0])
-                self.wait_click_ocr(
-                    match=get_world_map_matcher(self.lang, target_area),
-                    box=self.box_of_screen(0, (960 - 60 * len(areas_list)) / 1080, 260 / 1920, 1),
-                    time_out=5,
-                )
-                return True
+        current_box = self.box_of_screen(0, 960 / 1080, 260 / 1920, 1)  # 当前地区显示区域
+        menu_box = self.box_of_screen(0, (960 - 60 * len(areas_list)) / 1080, 260 / 1920, 960 / 1080)  # 菜单选项区域
+        area_matchers = [get_world_map_matcher(self.lang, area) for area in areas_list]  # 支持的地区
+        target_matcher = get_world_map_matcher(self.lang, target_area)  # 目标地区识别条件
+        expected_text = get_world_map_text(self.lang, target_area)  # 目标地区显示名称
+
+        self.log_info(f"[delivery-area] 开始切换目标地区={target_area}")  # 记录本次目标
+
+        def select_target():
+            """先识别底部当前地区，匹配目标则成功。
+
+            否则尝试点击已展开菜单中的目标。目标未识别时，菜单仍有地区选项就
+            稍后重试，否则点击底部当前地区展开菜单。每次点击后重新识别底部，
+            直到确认目标或外层等待超时。
+            """
+            current = self.wait_ocr(match=area_matchers, box=current_box, time_out=5)  # 等待底部地区
+            if not current:  # 当前地区不可见时不操作
+                self.log_info(f"[delivery-area] 未识别当前地区，继续等待目标={target_area}")
+                return False  # 等待下一帧
+            if expected_text in current[0].name or target_area in current[0].name:  # 已确认目标地区
+                self.log_info(f"[delivery-area] 已确认当前地区={current[0].name}，目标={target_area}")
+                return True  # 切换完成
+            if self.wait_click_ocr(match=target_matcher, box=menu_box, time_out=1, after_sleep=5):  # 等待并选择目标地区
+                self.log_info(f"[delivery-area] 已点击目标={target_area}，等待底部地区确认")
+                return False  # 下一帧确认切换结果
+            if self.ocr(match=area_matchers, box=menu_box):  # 菜单仍展开但目标未识别
+                self.log_info(f"[delivery-area] 菜单已展开但未识别目标={target_area}，稍后重试")
+                self.sleep(0.5)  # 等待目标选项清晰
+            else:  # 未检测到菜单选项
+                self.log_info(f"[delivery-area] 当前地区={current[0].name}，尝试展开菜单，目标={target_area}")
+                self.click(current[0], after_sleep=5)  # 尝试展开菜单并等待
+            return False  # 下一帧重新确认
+
+        if self.wait_until(select_target, time_out=20, raise_if_not_found=False):  # 有限时间内重试
+            return True  # 已确认目标地区
+        self.log_info(f"无法确认运送委托列表切换到{target_area}")  # 记录失败原因
+        return False  # 防止在错误地区继续刷新
 
     def ensure_map(self, addtional_feature=None, time_out=30):
         """
