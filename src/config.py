@@ -6,7 +6,7 @@ from src.core.email_config import email_config_option
 from src.interaction.EfInteraction import EfInteraction
 from src.tasks.daily.finally_file import decode
 
-version = "v2.0.24"
+version = "v2.0.25"
 
 
 # 不需要修改version, Github Action打包会自动修改
@@ -45,6 +45,7 @@ def make_bottom_left_black(frame):  # 可选. 某些游戏截图时遮挡UID使�
 
 config = {
     "custom_tasks": True,
+    "plugin": True,
     "debug": False,  # Optional, default: False
     "use_gui": True,  # 目前只支持True
     # 注册到 ok 的“设置”页（可调整 UI 颜色/主题的页面），邮件配置显示在那里。
